@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RetreatDesk</title>
+<script>document.documentElement.setAttribute('data-theme',localStorage.getItem('rdTheme')||'dark');</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Comfortaa:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -115,6 +116,31 @@
 }
 
 /* ══════════════════════════════════════
+   LIGHT MODE — .scard variable overrides
+   .scard always has a dark background (#1c1c1c).
+   In light mode, CSS vars like --gold, --mute2 etc. become
+   dark browns which are invisible on a dark card.
+   Override them here so inline styles inside .scard
+   always read as light-on-dark regardless of theme.
+══════════════════════════════════════ */
+[data-theme="light"] .scard {
+  --gold:    #c9a96e;
+  --mute3:   #777777;
+  --mute2:   #b3b3b3;
+  --mute1:   #d0d0d0;
+  --sub:     rgba(255,255,255,0.70);
+  --body:    #e0e0e0;
+  --hi:      #f0f0f0;
+  --white:   rgba(255,255,255,0.90);
+  --border:  rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.14);
+  --goldbg:  rgba(201,169,110,0.12);
+  --goldbd:  rgba(201,169,110,0.25);
+  --redbg:   rgba(233,20,41,0.15);
+  --greenbg: rgba(29,185,84,0.15);
+}
+
+/* ══════════════════════════════════════
    BASE
 ══════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -203,7 +229,7 @@ body::after {
 .lc-divider { height: 1px; background: rgba(255,255,255,0.12); margin-bottom: 28px; }
 .lc-pin-label { font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.55); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 20px; transition: color 0.2s; text-align: center; }
 .lc-pin-label.error-label { color: #e07070; }
-.lc-pin-label.success-label { color: #0d9488; }
+.lc-pin-label.success-label { color: #c9a96e; }
 
 /* ── PIN input — single rectangle ── */
 .lc-input-wrap {
@@ -230,30 +256,19 @@ body::after {
   font-size: 20px;
 }
 .lc-input:focus {
+  border-width: 2px;
   border-color: rgba(201,169,110,0.35);
-  box-shadow: inset 0 1px 4px rgba(0,0,0,0.2), 0 0 0 3px rgba(201,169,110,0.10);
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.2);
 }
 
-/* Progressive glow as digits fill in */
-.lc-input-wrap[data-len="1"] .lc-input { border-color: rgba(201,169,110,0.32); box-shadow: inset 0 1px 4px rgba(0,0,0,0.2), 0 0 14px rgba(201,169,110,0.10); }
-.lc-input-wrap[data-len="2"] .lc-input { border-color: rgba(201,169,110,0.52); box-shadow: inset 0 1px 4px rgba(0,0,0,0.2), 0 0 20px rgba(201,169,110,0.16); }
-.lc-input-wrap[data-len="3"] .lc-input { border-color: rgba(201,169,110,0.70); box-shadow: inset 0 1px 4px rgba(0,0,0,0.2), 0 0 26px rgba(201,169,110,0.22); }
-.lc-input-wrap[data-len="4"] .lc-input { border-color: rgba(201,169,110,0.90); box-shadow: inset 0 1px 4px rgba(0,0,0,0.2), 0 0 34px rgba(201,169,110,0.30); }
+/* Progressive border as digits fill in */
+.lc-input-wrap[data-len="1"] .lc-input { border-width: 2px; border-color: rgba(201,169,110,0.35); box-shadow: inset 0 1px 4px rgba(0,0,0,0.2); }
+.lc-input-wrap[data-len="2"] .lc-input { border-width: 2px; border-color: rgba(201,169,110,0.50); box-shadow: inset 0 1px 4px rgba(0,0,0,0.2); }
+.lc-input-wrap[data-len="3"] .lc-input { border-width: 2px; border-color: rgba(201,169,110,0.65); box-shadow: inset 0 1px 4px rgba(0,0,0,0.2); }
+.lc-input-wrap[data-len="4"] .lc-input { border-width: 2px; border-color: rgba(201,169,110,0.82); box-shadow: inset 0 1px 4px rgba(0,0,0,0.2); }
 
-/* Progress bar under input */
-.lc-input-bar {
-  position: absolute; bottom: -10px; left: 50%;
-  transform: translateX(-50%);
-  height: 2px; width: 0;
-  background: linear-gradient(90deg, transparent, #c9a96e 40%, #c9a96e 60%, transparent);
-  border-radius: 2px;
-  transition: width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  opacity: 0.85;
-}
-.lc-input-wrap[data-len="1"] .lc-input-bar { width: 25%; }
-.lc-input-wrap[data-len="2"] .lc-input-bar { width: 50%; }
-.lc-input-wrap[data-len="3"] .lc-input-bar { width: 76%; }
-.lc-input-wrap[data-len="4"] .lc-input-bar { width: 94%; }
+/* Progress bar under input — hidden */
+.lc-input-bar { display: none; }
 
 /* Keystroke pulse */
 @keyframes lcKeyPulse {
@@ -265,7 +280,7 @@ body::after {
 
 /* Error / success states */
 .lc-input.lc-error { border-color: rgba(224,112,112,0.75) !important; box-shadow: inset 0 1px 4px rgba(0,0,0,0.2), 0 0 24px rgba(224,112,112,0.22) !important; }
-.lc-input.lc-success { border-color: #0d9488 !important; border-width: 2.5px !important; box-shadow: inset 0 1px 4px rgba(0,0,0,0.2), 0 0 32px rgba(13,148,136,0.45) !important; }
+.lc-input.lc-success { border-color: rgba(201,169,110,1) !important; border-width: 2px !important; box-shadow: inset 0 1px 4px rgba(0,0,0,0.2), 0 0 28px rgba(201,169,110,0.45) !important; }
 
 /* Shake on error */
 @keyframes lcShake {
@@ -1275,6 +1290,15 @@ body { font-size: 13.5px; }
 .modal-overlay { background: rgba(0,0,0,0.6); }
 [data-theme="dark"] .modal-overlay { background: rgba(0,0,0,0.75); }
 
+/* ── New retreat modal — always dark bg, keep inputs readable in light mode ── */
+[data-theme="light"] #new-retreat-modal .fi,
+[data-theme="light"] #new-retreat-modal .fi:focus {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  border-bottom-color: rgba(255,255,255,0.25);
+  box-shadow: none;
+}
+
 /* ── Search overlay ── */
 #search-overlay {
   position: fixed; inset: 0; z-index: 600;
@@ -1417,6 +1441,9 @@ body { font-size: 13.5px; }
 .sb-avatar {
   display: grid; place-items: center;
   flex-shrink: 0;
+}
+[data-theme="light"] .sb-avatar img {
+  filter: brightness(0) saturate(0) invert(22%);
 }
 .sb-user-name {
   font-size: 14px; font-weight: 600; color: var(--hi);
@@ -1564,7 +1591,7 @@ body { font-size: 13.5px; }
   width: 120px; height: 120px; opacity: 0.07;
   pointer-events: none; color: var(--hi);
 }
-[data-theme="dark"] .offer-card-bg { opacity: 0.05; }
+[data-theme="dark"] .offer-card-bg { opacity: 0.18; color: #c9a96e; }
 .offer-card:hover { box-shadow: var(--shadow-md); border-color: var(--border2); }
 .offer-card-name {
   font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--hi);
@@ -1579,7 +1606,7 @@ body { font-size: 13.5px; }
 .offer-price-value { font-size: 13px; font-weight: 600; color: var(--hi); font-variant-numeric: tabular-nums; font-family: 'Poppins', sans-serif; }
 .offer-price-single { font-size: 14px; font-weight: 600; color: var(--hi); font-variant-numeric: tabular-nums; font-family: 'Poppins', sans-serif; }
 .offers-art-band { width: 100%; margin: 20px 0 36px; color: var(--mute3); opacity: 0.28; pointer-events: none; display: block; overflow: hidden; }
-[data-theme="dark"] .offers-art-band { opacity: 0.15; }
+[data-theme="dark"] .offers-art-band { opacity: 0.22; color: #c9a96e; }
 .offers-section-label::before { content: '◆'; margin-right: 8px; font-size: 7px; vertical-align: middle; opacity: 0.55; }
 .offer-price-per { font-size: 10px; color: var(--mute3); margin-top: 1px; }
 .offer-card-addon { border-left: 2px solid var(--border2); }
@@ -2117,7 +2144,7 @@ body { font-size: 13.5px; }
             <div class="pl-kpi">
               <div class="pl-kpi-card">
                 <div class="pl-kpi-label">Retreat</div>
-                <div class="pl-kpi-val" style="font-size:16px;color:var(--white);letter-spacing:-0.3px;font-family:'Geist',sans-serif;font-weight:700;" id="sum-retreat-name">—</div>
+                <div class="pl-kpi-val" style="font-size:16px;color:var(--hi);letter-spacing:-0.3px;font-family:'Geist',sans-serif;font-weight:700;" id="sum-retreat-name">—</div>
               </div>
               <div class="pl-kpi-card" style="border-color:rgba(13,148,136,0.35);background:rgba(13,148,136,0.08);">
                 <div class="pl-kpi-label">Estimated Profit</div>
@@ -2576,7 +2603,7 @@ body { font-size: 13.5px; }
 (function() {
   var saved = localStorage.getItem('rdTheme');
   if (!saved) {
-    saved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    saved = 'dark';
   }
   document.documentElement.setAttribute('data-theme', saved);
   document.addEventListener('DOMContentLoaded', function() {
@@ -4547,7 +4574,7 @@ function renderRentalAgreement() {
   const numStyle = `font-family:'Poppins',sans-serif;`;
   const allRows = allData.map(({ rName, dayType, price, disc, nights, qty, sub, descText }) => {
     const displayName = dayType ? `${rName} (${dayType.toUpperCase()})` : rName;
-    const desc = descText || ITEM_DESCRIPTIONS[rName] || '';
+    const desc = descText || ITEM_DESCRIPTIONS[displayName] || ITEM_DESCRIPTIONS[rName] || '';
     const discAmt = disc ? price * (disc / 100) * (parseFloat(nights) || 0) * (parseFloat(qty) || 0) : 0;
     const discCell = hasDiscount ? `<td style="${tdBase}${numStyle}text-align:center;white-space:nowrap;color:${discAmt ? '#c0392b' : ''};">${discAmt ? q$(discAmt) : ''}</td>` : '';
     const descRow = desc
@@ -4921,7 +4948,7 @@ function exportRAPDF() {
   const content = document.getElementById('ra-preview').innerHTML;
   const retreatName = document.getElementById('r-name')?.value || currentRetreat?.name || 'Retreat';
   const win = window.open('', '_blank');
-  win.document.write(`<!DOCTYPE html><html><head><title>Rental Agreement - ${retreatName}</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;}body{font-family:'Inter',sans-serif;margin:0;padding:0;background:#fff;line-height:1.35;}@media print{body{margin:0;}}</style></head><body>${content}</body></html>`);
+  win.document.write(`<!DOCTYPE html><html><head><title>Rental Agreement - ${retreatName}</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;}body{font-family:'Inter',sans-serif;margin:0;padding:0;background:#fff;line-height:1.35;}@media print{body{margin:0;}}</style></head><bo`+`dy>${content}</bo`+`dy></ht`+`ml>`);
   win.document.close();
   setTimeout(() => win.print(), 600);
 }
@@ -5254,7 +5281,7 @@ function exportInvoicePDF() {
   const content = document.getElementById('invoice-preview').innerHTML;
   const retreatName = document.getElementById('r-name')?.value || currentRetreat?.name || 'Retreat';
   const win = window.open('', '_blank');
-  win.document.write(`<!DOCTYPE html><html><head><title>Final Invoice - ${retreatName}</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;}body{font-family:'Inter',sans-serif;margin:0;padding:0;background:#fff;line-height:1.35;}@media print{body{margin:0;}}</style></head><body>${content}</body></html>`);
+  win.document.write(`<!DOCTYPE html><html><head><title>Final Invoice - ${retreatName}</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;}body{font-family:'Inter',sans-serif;margin:0;padding:0;background:#fff;line-height:1.35;}@media print{body{margin:0;}}</style></head><bo`+`dy>${content}</bo`+`dy></ht`+`ml>`);
   win.document.close();
   setTimeout(() => win.print(), 600);
 }
