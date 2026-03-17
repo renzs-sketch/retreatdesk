@@ -1900,12 +1900,37 @@ body { font-size: 13.5px; }
               <div class="scard-total" id="total-services-display">$0.00</div>
             </div>
             <table class="dtable"><thead><tr>
-              <th style="width:170px;">Service</th><th style="width:88px;">Type</th><th style="width:88px;">Day Type</th>
+              <th style="width:170px;">Service</th><th style="width:88px;">Type</th>
               <th class="center" style="width:95px;">Rate</th><th class="center" style="width:70px;">Discount</th>
               <th class="center" style="width:60px;">Nights</th><th class="center" style="width:50px;">Qty</th>
               <th class="center" style="width:95px;">Subtotal</th><th style="width:30px;"></th>
             </tr></thead><tbody id="services-tbody"></tbody></table>
             <button class="btn-add-row" onclick="addRow('services')">+ Add Service</button>
+          </div>
+
+          <div class="scard scard-credits" style="margin-top:8px;">
+            <div class="scard-head">
+              <div class="scard-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Credits &amp; Deposits</div>
+            </div>
+            <table class="dtable"><thead><tr>
+              <th>Description</th>
+              <th class="center" style="width:150px;">Amount</th>
+              <th class="center" style="width:100px;">Type</th>
+              <th style="width:30px;"></th>
+            </tr></thead><tbody id="credits-locked-tbody"></tbody></table>
+          </div>
+
+          <div class="scard scard-credits" style="margin-top:8px;">
+            <div class="scard-head">
+              <div class="scard-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Adjustments and Addendum</div>
+            </div>
+            <table class="dtable"><thead><tr>
+              <th>Description</th>
+              <th class="center" style="width:150px;">Amount</th>
+              <th class="center" style="width:100px;">Type</th>
+              <th style="width:30px;"></th>
+            </tr></thead><tbody id="credits-adj-tbody"></tbody></table>
+            <button class="btn-add-row" onclick="addCreditRow()">+ Add Adjustment</button>
           </div>
 
           <div class="scard scard-taxes" style="margin-top:8px;">
@@ -1916,19 +1941,6 @@ body { font-size: 13.5px; }
               <div class="tax-row"><span class="tax-lbl">Service Fee (Culinary)</span><div class="tax-ctrl"><input class="tax-pct" id="pct-service-fee" value="18" oninput="calcTotals()"><span class="tax-pct-sym">%</span><span class="tax-amt" id="amt-service-fee">$0.00</span></div></div>
               <div class="tax-row"><span class="tax-lbl">Service Charge (Massage)</span><div class="tax-ctrl"><input class="tax-pct" id="pct-service-charge" value="20" oninput="calcTotals()"><span class="tax-pct-sym">%</span><span class="tax-amt" id="amt-service-charge">$0.00</span></div></div>
             </div>
-          </div>
-
-          <div class="scard scard-credits" style="margin-top:8px;">
-            <div class="scard-head">
-              <div class="scard-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Credits, Deposits &amp; Adjustments</div>
-            </div>
-            <table class="dtable"><thead><tr>
-              <th>Description</th>
-              <th class="center" style="width:150px;">Amount</th>
-              <th class="center" style="width:100px;">Type</th>
-              <th style="width:30px;"></th>
-            </tr></thead><tbody id="credits-tbody"></tbody></table>
-            <button class="btn-add-row" onclick="addCreditRow()">+ Add Adjustment</button>
           </div>
 
           <input type="hidden" id="sec-deposit" value="0">
@@ -2371,11 +2383,11 @@ body { font-size: 13.5px; }
                 <!-- Payment 1 (always visible) -->
                 <div id="inv-pay-row-1" style="margin-bottom:14px;">
                   <div style="font-size:11px;font-weight:700;color:#0d9488;text-align:center;margin-bottom:6px;font-family:'Poppins',sans-serif;">Payment 1</div>
-                  <input class="fi" type="date" id="inv-pay1-date" oninput="if(!invoiceManuallyEdited)renderFinalInvoice()" style="width:100%;margin-bottom:5px;font-size:11px;text-align:center;">
+                  <input class="fi" type="date" id="inv-pay1-date" oninput="if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()" style="width:100%;margin-bottom:5px;font-size:11px;text-align:center;">
                   <input class="fi" type="text" inputmode="decimal" id="inv-pay1-amount" placeholder="0.00"
                     onfocus="this.value=this.value.replace(/,/g,'')"
-                    onblur="this.value=this.value?parseFloat(this.value.replace(/,/g,'')).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'';if(!invoiceManuallyEdited)renderFinalInvoice()"
-                    oninput="if(!invoiceManuallyEdited)renderFinalInvoice()"
+                    onblur="this.value=this.value?parseFloat(this.value.replace(/,/g,'')).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'';if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()"
+                    oninput="if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()"
                     style="width:100%;font-size:12px;font-family:'Poppins',sans-serif;text-align:center;">
                 </div>
                 <!-- Payment 2 (hidden by default) -->
@@ -2384,11 +2396,11 @@ body { font-size: 13.5px; }
                     <div style="font-size:11px;font-weight:700;color:#0d9488;font-family:'Poppins',sans-serif;">Payment 2</div>
                     <button onclick="removeInvPayRow(2)" style="position:absolute;right:0;background:none;border:none;cursor:pointer;color:var(--mute3);font-size:14px;line-height:1;padding:0;" title="Remove">×</button>
                   </div>
-                  <input class="fi" type="date" id="inv-pay2-date" oninput="if(!invoiceManuallyEdited)renderFinalInvoice()" style="width:100%;margin-bottom:5px;font-size:11px;text-align:center;">
+                  <input class="fi" type="date" id="inv-pay2-date" oninput="if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()" style="width:100%;margin-bottom:5px;font-size:11px;text-align:center;">
                   <input class="fi" type="text" inputmode="decimal" id="inv-pay2-amount" placeholder="0.00"
                     onfocus="this.value=this.value.replace(/,/g,'')"
-                    onblur="this.value=this.value?parseFloat(this.value.replace(/,/g,'')).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'';if(!invoiceManuallyEdited)renderFinalInvoice()"
-                    oninput="if(!invoiceManuallyEdited)renderFinalInvoice()"
+                    onblur="this.value=this.value?parseFloat(this.value.replace(/,/g,'')).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'';if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()"
+                    oninput="if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()"
                     style="width:100%;font-size:12px;font-family:'Poppins',sans-serif;text-align:center;">
                 </div>
                 <!-- Payment 3 (hidden by default) -->
@@ -2397,11 +2409,11 @@ body { font-size: 13.5px; }
                     <div style="font-size:11px;font-weight:700;color:#0d9488;font-family:'Poppins',sans-serif;">Payment 3</div>
                     <button onclick="removeInvPayRow(3)" style="position:absolute;right:0;background:none;border:none;cursor:pointer;color:var(--mute3);font-size:14px;line-height:1;padding:0;" title="Remove">×</button>
                   </div>
-                  <input class="fi" type="date" id="inv-pay3-date" oninput="if(!invoiceManuallyEdited)renderFinalInvoice()" style="width:100%;margin-bottom:5px;font-size:11px;text-align:center;">
+                  <input class="fi" type="date" id="inv-pay3-date" oninput="if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()" style="width:100%;margin-bottom:5px;font-size:11px;text-align:center;">
                   <input class="fi" type="text" inputmode="decimal" id="inv-pay3-amount" placeholder="0.00"
                     onfocus="this.value=this.value.replace(/,/g,'')"
-                    onblur="this.value=this.value?parseFloat(this.value.replace(/,/g,'')).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'';if(!invoiceManuallyEdited)renderFinalInvoice()"
-                    oninput="if(!invoiceManuallyEdited)renderFinalInvoice()"
+                    onblur="this.value=this.value?parseFloat(this.value.replace(/,/g,'')).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'';if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()"
+                    oninput="if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()"
                     style="width:100%;font-size:12px;font-family:'Poppins',sans-serif;text-align:center;">
                 </div>
                 <!-- Payment 4 (hidden by default) -->
@@ -2410,11 +2422,11 @@ body { font-size: 13.5px; }
                     <div style="font-size:11px;font-weight:700;color:#0d9488;font-family:'Poppins',sans-serif;">Payment 4</div>
                     <button onclick="removeInvPayRow(4)" style="position:absolute;right:0;background:none;border:none;cursor:pointer;color:var(--mute3);font-size:14px;line-height:1;padding:0;" title="Remove">×</button>
                   </div>
-                  <input class="fi" type="date" id="inv-pay4-date" oninput="if(!invoiceManuallyEdited)renderFinalInvoice()" style="width:100%;margin-bottom:5px;font-size:11px;text-align:center;">
+                  <input class="fi" type="date" id="inv-pay4-date" oninput="if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()" style="width:100%;margin-bottom:5px;font-size:11px;text-align:center;">
                   <input class="fi" type="text" inputmode="decimal" id="inv-pay4-amount" placeholder="0.00"
                     onfocus="this.value=this.value.replace(/,/g,'')"
-                    onblur="this.value=this.value?parseFloat(this.value.replace(/,/g,'')).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'';if(!invoiceManuallyEdited)renderFinalInvoice()"
-                    oninput="if(!invoiceManuallyEdited)renderFinalInvoice()"
+                    onblur="this.value=this.value?parseFloat(this.value.replace(/,/g,'')).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'';if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()"
+                    oninput="if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()"
                     style="width:100%;font-size:12px;font-family:'Poppins',sans-serif;text-align:center;">
                 </div>
                 <!-- Payment 5 (hidden by default) -->
@@ -2423,11 +2435,11 @@ body { font-size: 13.5px; }
                     <div style="font-size:11px;font-weight:700;color:#0d9488;font-family:'Poppins',sans-serif;">Payment 5</div>
                     <button onclick="removeInvPayRow(5)" style="position:absolute;right:0;background:none;border:none;cursor:pointer;color:var(--mute3);font-size:14px;line-height:1;padding:0;" title="Remove">×</button>
                   </div>
-                  <input class="fi" type="date" id="inv-pay5-date" oninput="if(!invoiceManuallyEdited)renderFinalInvoice()" style="width:100%;margin-bottom:5px;font-size:11px;text-align:center;">
+                  <input class="fi" type="date" id="inv-pay5-date" oninput="if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()" style="width:100%;margin-bottom:5px;font-size:11px;text-align:center;">
                   <input class="fi" type="text" inputmode="decimal" id="inv-pay5-amount" placeholder="0.00"
                     onfocus="this.value=this.value.replace(/,/g,'')"
-                    onblur="this.value=this.value?parseFloat(this.value.replace(/,/g,'')).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'';if(!invoiceManuallyEdited)renderFinalInvoice()"
-                    oninput="if(!invoiceManuallyEdited)renderFinalInvoice()"
+                    onblur="this.value=this.value?parseFloat(this.value.replace(/,/g,'')).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'';if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()"
+                    oninput="if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()"
                     style="width:100%;font-size:12px;font-family:'Poppins',sans-serif;text-align:center;">
                 </div>
                 <!-- Add payment button -->
@@ -2435,7 +2447,7 @@ body { font-size: 13.5px; }
                 <!-- Offset deposit toggle -->
                 <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
                   <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">
-                    <input type="checkbox" id="inv-offset-deposit" onchange="if(!invoiceManuallyEdited)renderFinalInvoice()" style="margin-top:2px;accent-color:#0d9488;cursor:pointer;flex-shrink:0;">
+                    <input type="checkbox" id="inv-offset-deposit" onchange="if(!invoiceManuallyEdited)renderFinalInvoice();markDirty()" style="margin-top:2px;accent-color:#0d9488;cursor:pointer;flex-shrink:0;">
                     <span style="font-size:10px;color:var(--mute2);line-height:1.4;">Apply security deposit toward balance remaining</span>
                   </label>
                 </div>
@@ -3289,8 +3301,8 @@ async function openRetreat(id) {
   // payment
   // payment rows
   if (d.payment_rows && d.payment_rows.length) {
-    paymentRows = d.payment_rows.map((r, i, arr) => ({
-      deposit: i === arr.length - 1, ...r
+    paymentRows = d.payment_rows.map(r => ({
+      deposit: false, ...r
     }));
   } else if (d.pp1 !== undefined) {
     paymentRows = [
@@ -3307,6 +3319,31 @@ async function openRetreat(id) {
   document.getElementById('bpct-housekeeping').value = d.bpct_housekeeping ?? 5;
   document.getElementById('bpct-production').value = d.bpct_production ?? 20;
   buildCreditRows(d.credit_rows || null);
+  // restore invoice payments
+  _invPayCount = d.inv_pay_count || 1;
+  if (d.inv_payments && d.inv_payments.length) {
+    d.inv_payments.forEach((p, idx) => {
+      const i = idx + 1;
+      const dateEl = document.getElementById(`inv-pay${i}-date`);
+      const amtEl = document.getElementById(`inv-pay${i}-amount`);
+      const rowEl = document.getElementById(`inv-pay-row-${i}`);
+      if (dateEl) dateEl.value = p.date || '';
+      if (amtEl) amtEl.value = p.amount || '';
+      if (rowEl && i > 1) rowEl.style.display = p.visible ? '' : 'none';
+    });
+  } else {
+    // reset all payment rows to empty
+    for (let i = 1; i <= 5; i++) {
+      const dateEl = document.getElementById(`inv-pay${i}-date`);
+      const amtEl = document.getElementById(`inv-pay${i}-amount`);
+      const rowEl = document.getElementById(`inv-pay-row-${i}`);
+      if (dateEl) dateEl.value = '';
+      if (amtEl) amtEl.value = '';
+      if (rowEl && i > 1) rowEl.style.display = 'none';
+    }
+  }
+  const offsetEl = document.getElementById('inv-offset-deposit');
+  if (offsetEl) offsetEl.checked = d.inv_offset_deposit || false;
   const _oldCulDef = ['F&B Services','Dishwasher'];
   const _oldProdDef = ['Production Assistant','Housekeeping'];
   buildBudgetRows('culinary', (d.budget_culinary_rows||[]).filter(r => r.vendor && !_oldCulDef.includes(r.vendor)));
@@ -3834,8 +3871,6 @@ function addRow(type, data={}) {
         <option value="regular" ${data.svc_type!=='massage'?'selected':''}>Regular</option>
         <option value="massage" ${data.svc_type==='massage'?'selected':''}>Massage</option>
       </select></td>
-      <td><select class="td-select day-type-sel" onchange="calcTotals();markDirty()">
-        ${dayTypeOpts(data.day_type)}</select></td>
       ${commonCols(data)}`;
 
   } else if (type === 'accom') {
@@ -3915,12 +3950,13 @@ function calcTotals() {
   const culinary = getRowsSubtotal('culinary-tbody');
   const services = getRowsSubtotal('services-tbody');
   const massage = getMassageSubtotal();
+  const nonMassageServices = services - massage;
   document.getElementById('total-rental-display').textContent = fmtCurrencySpaced(rental);
   document.getElementById('total-culinary-display').textContent = fmtCurrencySpaced(culinary);
-  document.getElementById('total-services-display').textContent = fmtCurrencySpaced(services);
+  document.getElementById('total-services-display').textContent = fmtCurrencySpaced(nonMassageServices);
   document.getElementById('sub-rental').textContent = fmtCurrencySpaced(rental);
   document.getElementById('sub-culinary').textContent = fmtCurrencySpaced(culinary);
-  document.getElementById('sub-services').textContent = fmtCurrencySpaced(services);
+  document.getElementById('sub-services').textContent = fmtCurrencySpaced(nonMassageServices);
   const subtotal = rental + culinary + services;
   document.getElementById('subtotal-all').textContent = fmtCurrencySpaced(subtotal);
   const salesTax = (rental+culinary) * parsePct('pct-sales-tax');
@@ -5109,6 +5145,29 @@ function renderFinalInvoice() {
       <span style="font-size:11px;font-weight:600;white-space:nowrap;padding-left:24px;${poppins}${valStyle}">${val}</span>
     </div>`;
 
+  const offsetDeposit = !isOverpaid && !isPaidFull && secDep > 0 && document.getElementById('inv-offset-deposit')?.checked;
+  const effectiveBalance = offsetDeposit ? Math.max(0, balanceRemaining - secDep) : balanceRemaining;
+
+  const adjRows = creditRows.filter(r => !r.locked && r.name && (parseFloat(String(r.amount||0).replace(/,/g,''))||0) !== 0);
+  const adjNet = adjRows.reduce((sum, r) => {
+    const amt = parseFloat(String(r.amount||0).replace(/,/g,''))||0;
+    return sum + (r.type === 'deduct' ? -amt : amt);
+  }, 0);
+  const toTitleCase = s => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  const adjSection = adjRows.length > 0 ? `
+    ${sectionLabel('Adjustments')}
+    <div style="background:#f2f2f2;border-radius:4px;padding:2px 0;margin:3px 0 0;">
+      ${adjRows.map(r => {
+        const amt = parseFloat(String(r.amount||0).replace(/,/g,''))||0;
+        const isDeduct = r.type === 'deduct';
+        return fRow(toTitleCase(r.name), (isDeduct ? '&minus;&nbsp;' : '+&nbsp;') + q$(amt), isDeduct ? 'color:#c0392b;' : 'color:#444;');
+      }).join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+      <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;color:#1a1a1a;">Adjusted Balance</span>
+      <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:#1a1a1a;">${q$(effectiveBalance + adjNet)}</span>
+    </div>` : '';
+
   const paymentsSection = payments.length > 0 ? `
 
     ${sectionLabel('Payment Summary')}
@@ -5121,43 +5180,184 @@ function renderFinalInvoice() {
       const creditToApply = availableCredit > 0 ? availableCredit : 0;
       // Balance remaining logic takes credit into account here if needed, but it's already subtracted from `grand` initially.
 
-      const offsetDeposit = !isOverpaid && !isPaidFull && secDep > 0 && document.getElementById('inv-offset-deposit')?.checked;
       const netBalance = offsetDeposit ? Math.max(0, balanceRemaining - secDep) : balanceRemaining;
       const depositCoversAll = offsetDeposit && secDep >= balanceRemaining;
 
-      if (isPaidFull) return `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
-          <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Status</span>
-          <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">Paid in Full</span>
-        </div>
-        ${secDep > 0 ? `<div style="margin-top:10px;padding:6px 8px;border-left:2px solid #ddd;">
-          <div style="font-size:9px;color:#aaa;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px;">Security Deposit</div>
-          <div style="font-size:9.5px;color:#999;">${q$(secDep)} held · Refundable after checkout inspection</div>
-        </div>` : ''}`;
+      const inlineAdjRows = adjRows.length > 0 ? `
+        <div style="margin-top:14px;">
+          ${sectionLabel('Adjustments')}
+          <div style="background:#f2f2f2;border-radius:4px;padding:2px 0;margin:3px 0 0;">
+            ${adjRows.map(r => {
+              const amt = parseFloat(String(r.amount||0).replace(/,/g,''))||0;
+              const isDeduct = r.type === 'deduct';
+              return fRow(toTitleCase(r.name), (isDeduct ? '&minus;&nbsp;' : '+&nbsp;') + q$(amt), isDeduct ? 'color:#c0392b;' : 'color:#444;');
+            }).join('')}
+          </div>
+        </div>` : '';
 
-      if (isOverpaid) return `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
-          <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Overpaid Amount</span>
-          <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">${paren$(overpaymentAmt)}</span>
-        </div>
-        ${secDep > 0 ? `
-        <div style="margin-top:14px;">
-          ${sectionLabel('Security Deposit')}
-          <div style="background:#f2f2f2;border-radius:4px;padding:2px 0;margin:3px 0 0;">
-            ${fRow('Security Deposit Held', q$(secDep), 'color:#444;', 'Refundable after checkout inspection')}
-          </div>
-        </div>` : ''}
-        <div style="margin-top:14px;">
-          ${sectionLabel('Refund Summary')}
-          <div style="background:#f2f2f2;border-radius:4px;padding:2px 0;margin:3px 0 0;">
-            ${secDep > 0 ? fRow('Security Deposit Refund', paren$(secDep), `color:${teal};`) : ''}
-            ${fRow('Overpayment Refund', paren$(overpaymentAmt), `color:${teal};`)}
-          </div>
+      if (isPaidFull) {
+        if (adjRows.length > 0) {
+          const adjFinal = adjNet; // positive = guest owes; negative = host owes guest
+          return `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+              <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Status</span>
+              <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">Paid in Full</span>
+            </div>
+            ${secDep > 0 ? `<div style="margin-top:10px;padding:6px 8px;border-left:2px solid #ddd;">
+              <div style="font-size:9px;color:#aaa;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px;">Security Deposit</div>
+              <div style="font-size:9.5px;color:#999;">${q$(secDep)} held · Refundable after checkout inspection</div>
+            </div>` : ''}
+            ${inlineAdjRows}
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+              <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;color:#1a1a1a;">Adjusted Balance</span>
+              <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:#1a1a1a;">${adjFinal > 0.005 ? q$(adjFinal) : adjFinal < -0.005 ? `Credit ${paren$(Math.abs(adjFinal))}` : 'Paid in Full'}</span>
+            </div>`;
+        }
+        return `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
-            <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Total Refund to Guest</span>
-            <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">${paren$(secDep + overpaymentAmt)}</span>
+            <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Status</span>
+            <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">Paid in Full</span>
           </div>
-        </div>`;
+          ${secDep > 0 ? `<div style="margin-top:10px;padding:6px 8px;border-left:2px solid #ddd;">
+            <div style="font-size:9px;color:#aaa;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px;">Security Deposit</div>
+            <div style="font-size:9.5px;color:#999;">${q$(secDep)} held · Refundable after checkout inspection</div>
+          </div>` : ''}`;
+      }
+
+      if (isOverpaid) {
+        if (adjRows.length > 0) {
+          const netAfterAdj = overpaymentAmt - adjNet;
+          if (netAfterAdj > 0.005) {
+            // Refund reduced by adjustments
+            return `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+                <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Overpaid Amount</span>
+                <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">${paren$(overpaymentAmt)}</span>
+              </div>
+              ${inlineAdjRows}
+              ${secDep > 0 ? `
+              <div style="margin-top:14px;">
+                ${sectionLabel('Security Deposit')}
+                <div style="background:#f2f2f2;border-radius:4px;padding:2px 0;margin:3px 0 0;">
+                  ${fRow('Security Deposit Held', q$(secDep), 'color:#444;', 'Refundable after checkout inspection')}
+                </div>
+              </div>` : ''}
+              <div style="margin-top:14px;">
+                ${sectionLabel('Refund Summary')}
+                <div style="background:#f2f2f2;border-radius:4px;padding:2px 0;margin:3px 0 0;">
+                  ${secDep > 0 ? fRow('Security Deposit Refund', paren$(secDep), `color:${teal};`) : ''}
+                  ${fRow('Overpayment Refund (after adjustments)', paren$(netAfterAdj), `color:${teal};`)}
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+                  <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Total Refund to Guest</span>
+                  <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">${paren$(secDep + netAfterAdj)}</span>
+                </div>
+              </div>`;
+          } else if (netAfterAdj < -0.005) {
+            // Adjustments exceeded overpayment — compute net vs security deposit
+            const balDue = Math.abs(netAfterAdj);
+            const netRefund = secDep - balDue;
+            if (secDep > 0 && netRefund > 0.005) {
+              // Security deposit covers the balance — still a net refund to guest
+              return `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+                  <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Overpaid Amount</span>
+                  <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">${paren$(overpaymentAmt)}</span>
+                </div>
+                ${inlineAdjRows}
+                <div style="margin-top:14px;">
+                  ${sectionLabel('Security Deposit')}
+                  <div style="background:#f2f2f2;border-radius:4px;padding:2px 0;margin:3px 0 0;">
+                    ${fRow('Security Deposit Held', q$(secDep), 'color:#444;', 'Refundable after checkout inspection')}
+                  </div>
+                </div>
+                <div style="margin-top:14px;">
+                  ${sectionLabel('Refund Summary')}
+                  <div style="background:#f2f2f2;border-radius:4px;padding:2px 0;margin:3px 0 0;">
+                    ${fRow('Security Deposit Refund', paren$(secDep), `color:${teal};`)}
+                    ${fRow('Less: Balance After Adjustments', q$(balDue), 'color:#c0392b;')}
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+                    <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Total Refund to Guest</span>
+                    <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">${paren$(netRefund)}</span>
+                  </div>
+                </div>`;
+            } else if (secDep > 0 && Math.abs(netRefund) < 0.005) {
+              // Security deposit exactly covers balance
+              return `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+                  <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Overpaid Amount</span>
+                  <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">${paren$(overpaymentAmt)}</span>
+                </div>
+                ${inlineAdjRows}
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+                  <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Adjusted Status</span>
+                  <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">Paid in Full</span>
+                </div>`;
+            } else {
+              // No sec dep, or sec dep not enough — guest still owes
+              const finalDue = secDep > 0 ? balDue - secDep : balDue;
+              return `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+                  <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Overpaid Amount</span>
+                  <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">${paren$(overpaymentAmt)}</span>
+                </div>
+                ${inlineAdjRows}
+                ${secDep > 0 ? `
+                <div style="margin-top:14px;">
+                  ${sectionLabel('Security Deposit')}
+                  <div style="background:#f2f2f2;border-radius:4px;padding:2px 0;margin:3px 0 0;">
+                    ${fRow('Security Deposit Held', q$(secDep), 'color:#444;', 'Applied toward balance')}
+                  </div>
+                </div>` : ''}
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+                  <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;color:#1a1a1a;">Balance Due</span>
+                  <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:#1a1a1a;">${q$(finalDue)}</span>
+                </div>`;
+            }
+          } else {
+            // Adjustments exactly cancel overpayment
+            return `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+                <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Overpaid Amount</span>
+                <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">${paren$(overpaymentAmt)}</span>
+              </div>
+              ${inlineAdjRows}
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+                <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Adjusted Status</span>
+                <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">Paid in Full</span>
+              </div>
+              ${secDep > 0 ? `<div style="margin-top:10px;padding:6px 8px;border-left:2px solid #ddd;">
+                <div style="font-size:9px;color:#aaa;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px;">Security Deposit</div>
+                <div style="font-size:9.5px;color:#999;">${q$(secDep)} held · Refundable after checkout inspection</div>
+              </div>` : ''}`;
+          }
+        }
+        // No adjustments — original behavior
+        return `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+            <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Overpaid Amount</span>
+            <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">${paren$(overpaymentAmt)}</span>
+          </div>
+          ${secDep > 0 ? `
+          <div style="margin-top:14px;">
+            ${sectionLabel('Security Deposit')}
+            <div style="background:#f2f2f2;border-radius:4px;padding:2px 0;margin:3px 0 0;">
+              ${fRow('Security Deposit Held', q$(secDep), 'color:#444;', 'Refundable after checkout inspection')}
+            </div>
+          </div>` : ''}
+          <div style="margin-top:14px;">
+            ${sectionLabel('Refund Summary')}
+            <div style="background:#f2f2f2;border-radius:4px;padding:2px 0;margin:3px 0 0;">
+              ${secDep > 0 ? fRow('Security Deposit Refund', paren$(secDep), `color:${teal};`) : ''}
+              ${fRow('Overpayment Refund', paren$(overpaymentAmt), `color:${teal};`)}
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:2px;border-top:2px solid #383d3b;">
+              <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;">Total Refund to Guest</span>
+              <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:${teal};">${paren$(secDep + overpaymentAmt)}</span>
+            </div>
+          </div>`;
+      }
 
       // Balance remaining
       return `
@@ -5170,12 +5370,11 @@ function renderFinalInvoice() {
           <span style="font-size:15px;font-weight:800;letter-spacing:0.2px;color:#1a1a1a;">${offsetDeposit ? (secDep > balanceRemaining ? 'Available Credit' : (Math.abs(secDep - balanceRemaining) < 0.005 ? 'Status' : 'Balance Due')) : 'Balance Remaining'}</span>
           <span style="font-size:18px;font-weight:800;white-space:nowrap;${poppins}color:#1a1a1a;">${offsetDeposit ? (Math.abs(secDep - balanceRemaining) < 0.005 ? 'Paid in Full' : q$(Math.abs(balanceRemaining - secDep))) : q$(balanceRemaining)}</span>
         </div>
-        <div style="margin-top:10px;padding:6px 8px;border-left:2px solid #ddd;">
+        ${!offsetDeposit ? `<div style="margin-top:10px;padding:6px 8px;border-left:2px solid #ddd;">
           <div style="font-size:9px;color:#aaa;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px;">Security Deposit</div>
-          <div style="font-size:9.5px;color:#999;">${q$(secDep)} held · Refundable after checkout inspection${offsetDeposit ? ' · Applied toward balance' : ''}</div>
-        </div>`;
+          <div style="font-size:9.5px;color:#999;">${q$(secDep)} held · Refundable after checkout inspection</div>
+        </div>` : ''}`;
     })()}
-
   ` : '';
 
   document.getElementById('invoice-preview').innerHTML = `
@@ -5216,6 +5415,7 @@ function renderFinalInvoice() {
           <div style="background:#f2f2f2;border-radius:4px;padding:2px 0;margin:3px 0;">${taxRows}</div>
           ${grandRow}
           ${paymentsSection}
+          ${!isOverpaid && !isPaidFull ? adjSection : ''}
         </div>
       </div>
 
@@ -5384,7 +5584,7 @@ function gatherData() {
   const gRows = (tbodyId, type) => [...document.querySelectorAll(`#${tbodyId} tr`)].map(tr => {
     if (type === 'services') {
       const inputs = tr.querySelectorAll('input,select');
-      return { name:inputs[0]?.value, svc_type:inputs[1]?.value, day_type:inputs[2]?.value, price:inputs[3]?.value, discount:inputs[4]?.value, nights:inputs[5]?.value, qty:inputs[6]?.value, subtotal:inputs[7]?.value };
+      return { name:inputs[0]?.value, svc_type:inputs[1]?.value, price:inputs[2]?.value, discount:inputs[3]?.value, nights:inputs[4]?.value, qty:inputs[5]?.value, subtotal:inputs[6]?.value };
     }
     // accom / culinary — handle both preset dropdown and custom text input
     const isCustom = !!tr.querySelector('.custom-name-input');
@@ -5417,6 +5617,13 @@ function gatherData() {
     bpct_culinary:v('bpct-culinary'), bpct_housekeeping:v('bpct-housekeeping'), bpct_production:v('bpct-production'),
     budget_culinary_rows:gBRows('budget-culinary-tbody','culinary'), budget_prod_rows:gBRows('budget-prod-tbody','prod'),
     pct_referral:v('pct-referral'), pct_mgmt:v('pct-mgmt'), pct_commissions:v('pct-commissions'),
+    inv_payments: [1,2,3,4,5].map(i => ({
+      date: document.getElementById(`inv-pay${i}-date`)?.value || '',
+      amount: document.getElementById(`inv-pay${i}-amount`)?.value || '',
+      visible: document.getElementById(`inv-pay-row-${i}`)?.style.display !== 'none'
+    })),
+    inv_offset_deposit: document.getElementById('inv-offset-deposit')?.checked || false,
+    inv_pay_count: _invPayCount,
     custom_quote_html: quoteManuallyEdited ? document.getElementById('quote-preview').innerHTML : null,
     custom_ra_html: raManuallyEdited ? document.getElementById('ra-preview').innerHTML : null,
     custom_invoice_html: invoiceManuallyEdited ? document.getElementById('invoice-preview').innerHTML : null
@@ -5544,14 +5751,16 @@ function buildCreditRows(rows) {
   renderCreditRows();
 }
 function renderCreditRows() {
-  const tbody = document.getElementById('credits-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = '';
+  const lockedTbody = document.getElementById('credits-locked-tbody');
+  const adjTbody = document.getElementById('credits-adj-tbody');
+  if (!lockedTbody || !adjTbody) return;
+  lockedTbody.innerHTML = '';
+  adjTbody.innerHTML = '';
   creditRows.forEach((row, i) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${row.locked
-        ? `<span class="td-input" style="display:block;cursor:default;">${row.name}</span>`
+        ? `<span class="td-input" style="display:block;cursor:default;text-transform:uppercase;">${row.name}</span>`
         : `<input class="td-input" value="${row.name||''}" placeholder="Description" oninput="this.value=this.value.toUpperCase();creditRows[${i}].name=this.value;markDirty()">`
       }</td>
       <td style="text-align:center;">
@@ -5571,7 +5780,7 @@ function renderCreditRows() {
       </td>
       <td>${row.locked ? '' : `<button class="btn-del-row" onclick="removeCreditRow(${i})">×</button>`}</td>
     `;
-    tbody.appendChild(tr);
+    (row.locked ? lockedTbody : adjTbody).appendChild(tr);
   });
 }
 function addCreditRow() {
@@ -5663,7 +5872,7 @@ function assignDeposit(idx, checked) {
 }
 
 function addPaymentRow() {
-  paymentRows.push({ pct: 0, daysBefore: null, note: '' });
+  paymentRows.push({ pct: 0, daysBefore: null, note: '', deposit: false });
   renderPaymentRows();
   calcPayments();
   markDirty();
