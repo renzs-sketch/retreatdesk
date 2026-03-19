@@ -6,7 +6,10 @@
 <title>RetreatDesk</title>
 <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('rdTheme')||'dark');</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://images.pexels.com">
+<link rel="preconnect" href="https://bulruavemyajrbehiyjg.supabase.co">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Comfortaa:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" async onload="emailjs.init('uiMDO0sIwIXk-NmPa')"></script>
 <style>
 /* ══════════════════════════════════════
    TOKENS — Beige & Dark Accent Light
@@ -203,7 +206,7 @@ body::after {
 #login-screen {
   position: fixed; inset: 0; z-index: 9999;
   display: flex; align-items: center; justify-content: center;
-  background: #b8956a url("https://images.pexels.com/photos/33148583/pexels-photo-33148583.jpeg") center 40% / cover no-repeat;
+  background: #b8956a url("https://images.pexels.com/photos/33148583/pexels-photo-33148583.jpeg?auto=compress&cs=tinysrgb&w=1920&q=80") center 40% / cover no-repeat;
 }
 #login-screen::after {
   content: ''; position: absolute; inset: 0;
@@ -281,6 +284,17 @@ body::after {
 /* Error / success states */
 .lc-input.lc-error { border-color: rgba(224,112,112,0.75) !important; box-shadow: inset 0 1px 4px rgba(0,0,0,0.2), 0 0 24px rgba(224,112,112,0.22) !important; }
 .lc-input.lc-success { border-color: rgba(201,169,110,1) !important; border-width: 2px !important; box-shadow: inset 0 1px 4px rgba(0,0,0,0.2), 0 0 28px rgba(201,169,110,0.45) !important; }
+
+/* Sent toast */
+@keyframes toastIn  { from { opacity:0; transform:translateY(16px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
+@keyframes toastOut { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(8px); } }
+
+/* Signing area pulse */
+@keyframes sigPulse {
+  0%,100% { box-shadow: 0 0 0 2px #0d9488, 0 0 8px rgba(13,148,136,0.3); }
+  50%      { box-shadow: 0 0 0 4px #0d9488, 0 0 18px rgba(13,148,136,0.55); }
+}
+.sig-guide-pulse { animation: sigPulse 1.8s ease-in-out infinite !important; border-radius: 4px; }
 
 /* Shake on error */
 @keyframes lcShake {
@@ -990,7 +1004,7 @@ body::after {
    MODAL
 ══════════════════════════════════════ */
 .modal-overlay {
-  position: fixed; inset: 0; z-index: 500;
+  position: fixed; inset: 0; z-index: 1000;
   background: rgba(30,18,8,0.55); backdrop-filter: blur(10px);
   display: flex; align-items: center; justify-content: center; padding: 20px;
 }
@@ -1681,6 +1695,76 @@ body { font-size: 13.5px; }
   </div>
 </div>
 
+<!-- ── SENT TOAST ── -->
+<div id="sent-toast" style="display:none;position:fixed;bottom:28px;right:28px;z-index:9999;background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:14px 18px;align-items:center;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,0.25);min-width:280px;max-width:360px;">
+  <div style="width:36px;height:36px;border-radius:50%;background:var(--sagebg);border:1.5px solid var(--sagebd);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+  </div>
+  <div style="flex:1;min-width:0;">
+    <div id="sent-toast-title" style="font-size:12.5px;font-weight:600;color:var(--hi);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+    <div id="sent-toast-sub" style="font-size:11px;color:var(--mute2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+  </div>
+  <button onclick="document.getElementById('sent-toast').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--mute2);font-size:16px;line-height:1;flex-shrink:0;padding:0;">×</button>
+</div>
+
+<!-- ════════════ SIGNING PAGE (shown when ?sign=UUID is in URL) ════════════ -->
+<!--
+  SUPABASE TABLE REQUIRED — run this SQL in your Supabase SQL editor:
+
+  create table signing_requests (
+    id uuid primary key default gen_random_uuid(),
+    retreat_id text,
+    doc_type text,
+    doc_html text,
+    doc_title text,
+    recipient_name text,
+    recipient_email text,
+    sender_email text,
+    status text default 'pending',
+    client_signature text,
+    signed_at timestamptz,
+    created_at timestamptz default now()
+  );
+  alter table signing_requests enable row level security;
+  create policy "allow_all" on signing_requests for all using (true) with check (true);
+-->
+<div id="signing-page" style="display:none;position:fixed;inset:0;z-index:900;background:#f0ede6;overflow-y:auto;">
+  <!-- Header -->
+  <div style="background:#383d3b;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;">
+    <img src="https://images.squarespace-cdn.com/content/v1/58d063cdb3db2bea26257d38/fbb237ef-4caa-4efc-837c-e3c8ee77f296/CCRL+Logo+white.png?format=500w" style="height:44px;object-fit:contain;">
+    <div id="sign-status-badge" style="font-size:10.5px;font-weight:700;letter-spacing:1px;color:#fff;background:rgba(255,255,255,0.15);padding:5px 14px;border-radius:20px;">AWAITING SIGNATURE</div>
+  </div>
+
+  <!-- Instruction banner -->
+  <div id="sign-instruction-bar" style="background:#0d9488;padding:10px 24px;text-align:center;font-size:12.5px;font-weight:600;color:#fff;letter-spacing:0.2px;">
+    Please review the document below and click the signature area to sign.
+  </div>
+
+  <!-- Document container -->
+  <div style="max-width:860px;margin:28px auto 160px;padding:0 16px;">
+    <div id="sign-doc-container" style="background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.1);padding:52px;font-family:'Inter',sans-serif;color:#1a1a1a;line-height:1.35;"></div>
+  </div>
+
+  <!-- Already signed state -->
+  <div id="sign-already-signed" style="display:none;text-align:center;padding:80px 24px;">
+    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="1.5" style="margin-bottom:16px;"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
+    <div style="font-size:20px;font-weight:700;color:#1a1a1a;margin-bottom:8px;">Document Already Signed</div>
+    <div style="font-size:13px;color:#666;">This document has already been signed. Thank you!</div>
+  </div>
+
+  <!-- Bottom action bar -->
+  <div id="sign-bottom-bar" style="position:fixed;bottom:0;left:0;right:0;background:#1a1a1a;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;z-index:10;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div id="sign-guide-dot" style="width:10px;height:10px;border-radius:50%;background:#0d9488;flex-shrink:0;animation:sigPulse 1.8s ease-in-out infinite;box-shadow:0 0 0 2px #0d9488;"></div>
+      <span id="sign-guide-text" style="font-size:12.5px;color:rgba(255,255,255,0.85);font-weight:500;">Click the highlighted area on the document to add your signature.</span>
+    </div>
+    <button id="sign-submit-btn" onclick="submitSignature()" disabled
+      style="background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);border:1.5px solid rgba(255,255,255,0.2);border-radius:8px;padding:9px 22px;font-size:12.5px;font-weight:600;cursor:not-allowed;white-space:nowrap;transition:all 0.2s;flex-shrink:0;">
+      Submit Signature
+    </button>
+  </div>
+</div>
+
 <!-- ════════════ APP ════════════ -->
 <div id="app">
   <div class="app-layout">
@@ -1764,7 +1848,7 @@ body { font-size: 13.5px; }
             </div>
             <div>
               <div class="section-eyebrow" style="font-size:14px; font-weight:700; color:var(--hi); margin-bottom:16px; text-align:center;">Upcoming Retreats</div>
-              <div id="dashboard-calendar" style="background:linear-gradient(rgba(20,25,22,0.55),rgba(20,25,22,0.65)),url('https://images.pexels.com/photos/33148583/pexels-photo-33148583.jpeg') center 75% / cover no-repeat;border-radius:12px;box-shadow:var(--shadow-sm);overflow:hidden;"></div>
+              <div id="dashboard-calendar" style="background:linear-gradient(rgba(20,25,22,0.55),rgba(20,25,22,0.65)),url('https://images.pexels.com/photos/33148583/pexels-photo-33148583.jpeg?auto=compress&cs=tinysrgb&w=800&q=80') center 75% / cover no-repeat;border-radius:12px;box-shadow:var(--shadow-sm);overflow:hidden;"></div>
             </div>
           </div>
           <!-- hidden stat elements so JS doesn't break -->
@@ -2294,6 +2378,10 @@ body { font-size: 13.5px; }
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   Export PDF
                 </button>
+                <button class="btn-primary" onclick="sendViaEmail('quote')" style="background:#BF4A3F;">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  Send via Email
+                </button>
               </div>
             </div>
             <div id="quote-preview" oninput="quoteManuallyEdited=true; markDirty(); fixDescPlaceholderStyle(event);" style="background:white;color:#111;border-radius:var(--r2);padding:52px;max-width:820px;font-family:'Geist',sans-serif;border:1px solid var(--border);"></div>
@@ -2329,6 +2417,10 @@ body { font-size: 13.5px; }
                 <button class="btn-primary" onclick="exportRAPDF()">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   Export PDF
+                </button>
+                <button class="btn-primary" onclick="sendViaEmail('ra')" style="background:#BF4A3F;">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  Send via Email
                 </button>
               </div>
             </div>
@@ -2369,6 +2461,10 @@ body { font-size: 13.5px; }
                 <button class="btn-primary" onclick="exportInvoicePDF()">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   Export PDF
+                </button>
+                <button class="btn-primary" onclick="sendViaEmail('invoice')" style="background:#BF4A3F;">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  Send via Email
                 </button>
               </div>
             </div>
@@ -2495,7 +2591,7 @@ body { font-size: 13.5px; }
 </div>
 
 <div class="modal-overlay" id="new-retreat-modal" style="display:none;">
-  <div class="modal" style="border-radius: 48px; padding: 40px 48px; max-width: 480px; text-align: center; background: linear-gradient(rgba(20,25,22,0.85),rgba(20,25,22,0.9)), url('https://images.pexels.com/photos/33148583/pexels-photo-33148583.jpeg') center / cover no-repeat; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 24px 48px rgba(0,0,0,0.6);">
+  <div class="modal" style="border-radius: 48px; padding: 40px 48px; max-width: 480px; text-align: center; background: linear-gradient(rgba(20,25,22,0.85),rgba(20,25,22,0.9)), url('https://images.pexels.com/photos/33148583/pexels-photo-33148583.jpeg?auto=compress&cs=tinysrgb&w=800&q=80') center / cover no-repeat; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 24px 48px rgba(0,0,0,0.6);">
     <div style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 24px; letter-spacing: -0.02em;">Create new retreat</div>
     <div class="fg" style="margin-bottom: 32px;">
       <label class="flabel" style="text-align: center; color: rgba(255,255,255,0.6); letter-spacing: 1px; font-size: 10px; text-transform: uppercase;">Retreat Name</label>
@@ -2591,6 +2687,100 @@ body { font-size: 13.5px; }
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeOfferEditDirect()">Cancel</button>
       <button class="btn-primary" onclick="saveOfferEdit()">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SEND VIA EMAIL MODAL ── -->
+<div class="modal-overlay" id="send-email-modal" style="display:none;" onclick="closeSendModal(event)">
+  <div class="modal" style="width:460px;border-radius:16px;padding:28px;background:var(--s2);" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div class="modal-title" style="margin:0;" id="send-modal-title">Send Document</div>
+      <button onclick="closeSendModal()" style="background:none;border:none;cursor:pointer;color:var(--mute2);font-size:20px;line-height:1;">×</button>
+    </div>
+
+    <!-- Warnings -->
+    <div id="send-warnings" style="display:none;background:rgba(233,20,41,0.08);border:1px solid rgba(233,20,41,0.2);border-radius:8px;padding:12px 14px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Issues found — please review before sending:
+      </div>
+      <ul id="send-warnings-list" style="margin:0;padding-left:16px;font-size:11px;color:var(--red);line-height:1.8;"></ul>
+    </div>
+
+    <!-- Recipient -->
+    <div style="background:var(--s3);border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+      <div style="font-size:10px;font-weight:600;letter-spacing:1px;color:var(--mute2);margin-bottom:8px;">SENDING TO</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;" id="send-avatar">?</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--hi);" id="send-recipient-name">—</div>
+          <div style="font-size:11px;color:var(--mute2);" id="send-recipient-email">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- From email -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:10px;font-weight:600;letter-spacing:1px;color:var(--mute2);margin-bottom:6px;">FROM (YOUR EMAIL)</div>
+      <input id="send-from-email" type="email" placeholder="e.g. dave@chozenretreat.com" class="fi" style="width:100%;font-size:12px;" oninput="localStorage.setItem('rdFromEmail', this.value)">
+    </div>
+
+    <!-- Subject preview -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:10px;font-weight:600;letter-spacing:1px;color:var(--mute2);margin-bottom:6px;">SUBJECT</div>
+      <div style="font-size:12px;color:var(--body);background:var(--s3);border-radius:8px;padding:10px 12px;" id="send-subject-preview">—</div>
+    </div>
+
+    <!-- Confirm checkbox -->
+    <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:20px;">
+      <input type="checkbox" id="send-confirm-chk" style="margin-top:2px;width:14px;height:14px;flex-shrink:0;">
+      <span style="font-size:11.5px;color:var(--body);line-height:1.5;">I confirm this document is ready to send and the recipient information is correct.</span>
+    </label>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeSendModal()">Cancel</button>
+      <button class="btn-primary" id="send-confirm-btn" onclick="confirmSendEmail()" style="background:#BF4A3F;display:flex;align-items:center;gap:6px;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Send
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SIGNATURE MODAL ── -->
+<div class="modal-overlay" id="sig-modal" style="display:none;" onclick="closeSigModal(event)">
+  <div class="modal" style="width:480px;border-radius:16px;padding:28px 28px 20px;background:var(--s2);" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div class="modal-title" style="margin:0;">Add Signature</div>
+      <button onclick="closeSigModal()" style="background:none;border:none;cursor:pointer;color:var(--mute2);font-size:20px;line-height:1;">×</button>
+    </div>
+    <!-- Tabs -->
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border2);margin-bottom:16px;">
+      <button id="sig-tab-draw" onclick="switchSigTab('draw')" style="flex:1;padding:8px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--accent);border-bottom:2px solid var(--accent);transition:all 0.15s;">Draw</button>
+      <button id="sig-tab-upload" onclick="switchSigTab('upload')" style="flex:1;padding:8px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--mute2);border-bottom:2px solid transparent;transition:all 0.15s;">Upload</button>
+    </div>
+    <!-- Draw panel -->
+    <div id="sig-panel-draw">
+      <div style="font-size:11px;color:var(--mute2);margin-bottom:8px;">Draw your signature below:</div>
+      <canvas id="sig-draw-canvas" width="420" height="130" style="border:1px solid var(--border2);border-radius:8px;background:#fff;cursor:crosshair;display:block;width:100%;touch-action:none;"></canvas>
+      <button onclick="clearSigCanvas()" style="margin-top:8px;font-size:11px;background:none;border:none;cursor:pointer;color:var(--mute2);text-decoration:underline;">Clear</button>
+    </div>
+    <!-- Upload panel -->
+    <div id="sig-panel-upload" style="display:none;">
+      <div style="font-size:11px;color:var(--mute2);margin-bottom:10px;">Upload a signature image (PNG, JPG):</div>
+      <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px dashed var(--border2);border-radius:8px;padding:24px;cursor:pointer;background:var(--s3);gap:8px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--mute2)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span style="font-size:12px;color:var(--mute2);">Click to choose file</span>
+        <input type="file" id="sig-upload-input" accept="image/*" style="display:none;" onchange="onSigFileUpload(event)">
+      </label>
+      <div id="sig-upload-preview" style="margin-top:12px;text-align:center;display:none;">
+        <img id="sig-upload-img" style="max-height:80px;max-width:100%;border:1px solid var(--border2);border-radius:6px;padding:4px;background:#fff;">
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn-secondary" onclick="closeSigModal()">Cancel</button>
+      <button class="btn-primary" onclick="applySig()">Apply Signature</button>
     </div>
   </div>
 </div>
@@ -2751,7 +2941,7 @@ function lcSubmitLogin() {
   var pin = lcPin2;
   var SURL = 'https://bulruavemyajrbehiyjg.supabase.co';
   var SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bHJ1YXZlbXlhanJiZWhpeWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTQwMjksImV4cCI6MjA4ODgzMDAyOX0.1lJanHuas8J3U5z46D1fhk_Pe908fzQnC_RkPm_-Uro';
-  fetch(SURL + '/rest/v1/users?pin=eq.' + pin + '&select=*', {
+  fetch(SURL + '/rest/v1/users?pin=eq.' + pin + '&select=id,name,pin', {
     headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY }
   }).then(function(r) { return r.json(); }).then(function(users) {
     var label = document.getElementById('lc-pin-label');
@@ -2816,11 +3006,22 @@ const sb = async (path, opts={}) => {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation', ...opts.headers },
       ...opts
     });
+    if (!res.ok) {
+      let errData;
+      try { errData = await res.json(); } catch(e) { errData = {}; }
+      console.error('Supabase error:', errData);
+      return null;
+    }
+    if (res.status === 204) return true; // No Content — successful PATCH/DELETE with return=minimal
     const data = await res.json();
-    if (!res.ok) { console.error('Supabase error:', data); return null; }
     return data;
   } catch(e) { console.error('Fetch error:', e); return null; }
 };
+
+// Wake up Supabase immediately (free tier cold-starts after inactivity)
+fetch(`${SUPABASE_URL}/rest/v1/retreats?select=id&limit=1`, {
+  headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+}).catch(function(){});
 
 // ── STATE ──
 let currentUser = null;
@@ -2858,7 +3059,7 @@ function lcSetDotState(state) {
 function lcSubmit() {
   lcBusy = true;
   var pin = lcPin;
-  sb('users?pin=eq.' + pin + '&select=*').then(function(users) {
+  sb('users?pin=eq.' + pin + '&select=id,name,pin').then(function(users) {
     if (!users || users.length === 0) {
       // wrong pin
       lcSetDotState('error');
@@ -3028,7 +3229,11 @@ function logout() {
 async function loadDashboard() {
   const list = document.getElementById('retreat-list');
   list.innerHTML = '<div class="loading"><div class="spin"></div> Loading...</div>';
-  const retreats = await sb('retreats?select=*&order=created_at.desc');
+  const retreats = await sb('retreats?select=id,name,status,start_date,end_date,created_by_name,created_at,data&order=created_at.desc');
+  if (retreats === null) {
+    list.innerHTML = '<div style="padding:60px 0;text-align:center;color:#c0392b;font-size:13px;">Could not load retreats. Check your connection and <a href="" style="color:#c0392b;">refresh</a>.</div>';
+    return;
+  }
   window._allRetreats = retreats || [];
   window._retreatFilter = window._retreatFilter || 'all';
 
@@ -3864,7 +4069,13 @@ function addRow(type, data={}) {
     <td style="${styleC}"><input class="td-input" type="number" value="${d.nights||''}" placeholder="0" oninput="calcRowSubtotal(this);calcTotals();markDirty()" style="text-align:center;"></td>
     <td style="${styleC}"><input class="td-input" type="number" value="${d.qty||''}" placeholder="0" oninput="calcRowSubtotal(this);calcTotals();markDirty()" style="text-align:center;"></td>
     <td style="${styleC}"><input class="td-input money-input" readonly value="${fmtN(sub0)}" data-raw="${sub0}" style="text-align:center;"></td>
-    <td><button class="btn-del-row" onclick="this.closest('tr').remove();calcTotals();markDirty()">×</button></td>`;
+    <td style="text-align:center;vertical-align:middle;padding:2px 4px;">
+      <label title="Mark as optional — shows in quote & RA without price" style="display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;margin-bottom:3px;">
+        <input type="checkbox" class="option-only-chk" onchange="onOptionOnlyChange(this)" style="width:11px;height:11px;cursor:pointer;">
+        <span style="font-size:7.5px;color:rgba(255,255,255,0.3);letter-spacing:0.5px;">OPT</span>
+      </label>
+      <button class="btn-del-row" onclick="this.closest('tr').remove();calcTotals();markDirty()">×</button>
+    </td>`;
   };
 
   if (type === 'services') {
@@ -3905,6 +4116,10 @@ function addRow(type, data={}) {
 
   tbody.appendChild(tr);
   if (data.price) calcRowSubtotal(tr.querySelector('.price-input'));
+  if (data.is_option) {
+    const chk = tr.querySelector('.option-only-chk');
+    if (chk) { chk.checked = true; tr.style.opacity = '0.6'; tr.classList.add('option-row'); }
+  }
 }
 function calcRowSubtotal(el) {
   const tr = el.closest('tr');
@@ -3916,11 +4131,19 @@ function calcRowSubtotal(el) {
   const readonlyInput = tr.querySelector('input[readonly]');
   if (readonlyInput) { readonlyInput.dataset.raw = sub; readonlyInput.value = fmtN(sub); }
 }
+function onOptionOnlyChange(chk) {
+  const tr = chk.closest('tr');
+  if (chk.checked) { tr.style.opacity = '0.6'; tr.classList.add('option-row'); }
+  else { tr.style.opacity = ''; tr.classList.remove('option-row'); }
+  calcTotals();
+  markDirty();
+}
 function fmtN(n) { const v = parseFloat(n)||0; return v.toLocaleString('en-US', {minimumFractionDigits:1,maximumFractionDigits:1}); }
 
 function getRowsSubtotal(tbodyId) {
   let total = 0;
   document.querySelectorAll(`#${tbodyId} tr`).forEach(tr => {
+    if (tr.querySelector('.option-only-chk')?.checked) return;
     const ro = tr.querySelector('input[readonly]');
     if (ro) total += parseFloat((ro.dataset.raw !== undefined ? ro.dataset.raw : ro.value).replace(/,/g,''))||0;
   });
@@ -3929,6 +4152,7 @@ function getRowsSubtotal(tbodyId) {
 function getMassageSubtotal() {
   let total = 0;
   document.querySelectorAll('#services-tbody tr').forEach(tr => {
+    if (tr.querySelector('.option-only-chk')?.checked) return;
     const sel = tr.querySelector('select');
     const ro = tr.querySelector('input[readonly]');
     if (sel && sel.value === 'massage' && ro) total += parseFloat((ro.dataset.raw !== undefined ? ro.dataset.raw : ro.value).replace(/,/g,''))||0;
@@ -4308,8 +4532,10 @@ function renderQuote() {
     const nights = numInputs[1]?.value||'';
     const qty = numInputs[2]?.value||'';
     const sub = tr.querySelector('.money-input')?.value || '0.00';
-    if (!rName || rName === '—' || parseFloat(String(sub).replace(/,/g,'')) === 0) return null;
-    return { rName, dayType, price, disc, nights, qty, sub };
+    const isOption = tr.querySelector('.option-only-chk')?.checked || false;
+    if (!rName || rName === '—') return null;
+    if (!isOption && parseFloat(String(sub).replace(/,/g,'')) === 0) return null;
+    return { rName, dayType, price, disc, nights, qty, sub, isOption };
   }).filter(Boolean);
 
   const allData = [
@@ -4322,16 +4548,24 @@ function renderQuote() {
 
   const tdBase = `padding:4px 10px;font-size:11.5px;line-height:1.3;`;
   const numStyle = `font-family:'Poppins',sans-serif;`;
-  const allRows = allData.map(({ rName, dayType, price, disc, nights, qty, sub }) => {
+  const allRows = allData.map(({ rName, dayType, price, disc, nights, qty, sub, isOption }) => {
     const displayName = dayType ? `${rName} (${dayType.toUpperCase()})` : rName;
     const desc = ITEM_DESCRIPTIONS[displayName] || ITEM_DESCRIPTIONS[rName] || '';
-    const discAmt = disc ? price * (disc/100) * (parseFloat(nights)||0) * (parseFloat(qty)||0) : 0;
+    const discAmt = !isOption && disc ? price * (disc/100) * (parseFloat(nights)||0) * (parseFloat(qty)||0) : 0;
     const discCell = hasDiscount
       ? `<td style="${tdBase}${numStyle}text-align:center;white-space:nowrap;color:${discAmt?'#c0392b':''};">${discAmt ? q$(discAmt) : ''}</td>`
       : '';
     const descRow = desc
       ? `<tr><td style="padding:2px 10px 8px;font-size:10px;color:#666;line-height:1.5;background:#f2f2f2;">${desc}</td><td colspan="${colSpanDesc - 1}" style="background:#f2f2f2;"></td></tr>`
       : `<tr><td data-no-desc="${displayName}" style="padding:2px 10px 8px;font-size:10px;color:#bbb;font-style:italic;line-height:1.5;background:#f2f2f2;">No description — use Edit to add one before printing.</td><td colspan="${colSpanDesc - 1}" style="background:#f2f2f2;"></td></tr>`;
+    if (isOption) {
+      const emptyCell = `<td style="${tdBase}text-align:center;color:#aaa;">—</td>`;
+      const optBadge = `<span style="display:inline-block;margin-left:6px;font-size:8px;font-weight:700;letter-spacing:1px;color:#0d9488;border:1px solid #0d9488;border-radius:3px;padding:1px 4px;">OPTIONAL</span>`;
+      return `<tr style="background:#f5fffe;">
+        <td style="${tdBase}font-weight:600;">${displayName}${optBadge}</td>
+        ${emptyCell}${emptyCell}${emptyCell}${hasDiscount ? emptyCell : ''}${emptyCell}
+      </tr>${descRow}`;
+    }
     return `<tr>
       <td style="${tdBase}font-weight:600;">${displayName}</td>
       <td style="${tdBase}${numStyle}text-align:center;white-space:nowrap;">${q$(price)}</td>
@@ -4608,22 +4842,32 @@ function renderRentalAgreement() {
     const qty = numInputs[2]?.value || '';
     const sub = tr.querySelector('.money-input')?.value || '0.00';
     const descText = tr.querySelector('.desc-input')?.value?.trim() || '';
-    if (!rName || rName === '—' || parseFloat(String(sub).replace(/,/g, '')) === 0) return null;
-    return { rName, dayType, price, disc, nights, qty, sub, descText };
+    const isOption = tr.querySelector('.option-only-chk')?.checked || false;
+    if (!rName || rName === '—') return null;
+    if (!isOption && parseFloat(String(sub).replace(/,/g, '')) === 0) return null;
+    return { rName, dayType, price, disc, nights, qty, sub, descText, isOption };
   }).filter(Boolean);
   const allData = [...collectRows('accom-tbody'), ...collectRows('culinary-tbody'), ...collectRows('services-tbody')];
   const hasDiscount = allData.some(r => r.disc > 0);
   const colSpanDesc = hasDiscount ? 6 : 5;
   const tdBase = `padding:4px 10px;font-size:11.5px;line-height:1.3;`;
   const numStyle = `font-family:'Poppins',sans-serif;`;
-  const allRows = allData.map(({ rName, dayType, price, disc, nights, qty, sub, descText }) => {
+  const allRows = allData.map(({ rName, dayType, price, disc, nights, qty, sub, descText, isOption }) => {
     const displayName = dayType ? `${rName} (${dayType.toUpperCase()})` : rName;
     const desc = descText || ITEM_DESCRIPTIONS[displayName] || ITEM_DESCRIPTIONS[rName] || '';
-    const discAmt = disc ? price * (disc / 100) * (parseFloat(nights) || 0) * (parseFloat(qty) || 0) : 0;
+    const discAmt = !isOption && disc ? price * (disc / 100) * (parseFloat(nights) || 0) * (parseFloat(qty) || 0) : 0;
     const discCell = hasDiscount ? `<td style="${tdBase}${numStyle}text-align:center;white-space:nowrap;color:${discAmt ? '#c0392b' : ''};">${discAmt ? q$(discAmt) : ''}</td>` : '';
     const descRow = desc
       ? `<tr><td style="padding:2px 10px 8px;font-size:10px;color:#666;line-height:1.5;background:#f2f2f2;">${desc}</td><td colspan="${colSpanDesc - 1}" style="background:#f2f2f2;"></td></tr>`
       : `<tr><td data-no-desc="${displayName}" style="padding:2px 10px 8px;font-size:10px;color:#bbb;font-style:italic;line-height:1.5;background:#f2f2f2;">No description — use Edit to add one before printing.</td><td colspan="${colSpanDesc - 1}" style="background:#f2f2f2;"></td></tr>`;
+    if (isOption) {
+      const emptyCell = `<td style="${tdBase}text-align:center;color:#aaa;">—</td>`;
+      const optBadge = `<span style="display:inline-block;margin-left:6px;font-size:8px;font-weight:700;letter-spacing:1px;color:#0d9488;border:1px solid #0d9488;border-radius:3px;padding:1px 4px;">OPTIONAL</span>`;
+      return `<tr style="background:#f5fffe;">
+        <td style="${tdBase}font-weight:600;">${displayName}${optBadge}</td>
+        ${emptyCell}${emptyCell}${emptyCell}${hasDiscount ? emptyCell : ''}${emptyCell}
+      </tr>${descRow}`;
+    }
     return `<tr>
       <td style="${tdBase}font-weight:600;">${displayName}</td>
       <td style="${tdBase}${numStyle}text-align:center;white-space:nowrap;">${q$(price)}</td>
@@ -4887,41 +5131,89 @@ function renderRentalAgreement() {
           }
           .sig-box { cursor: pointer; transition: background 0.2s; position: relative; height: 16px; border-bottom: 1px solid #111; margin-bottom: 0px; }
           .sig-box:hover { background: #f0f0f0; }
+          #ccrl-sig-date::placeholder, #client-sig-date::placeholder { color: #ccc; font-family:'Poppins',sans-serif; font-size:13px; }
         </style>
-        <div style="display:flex;gap:48px;margin-top:24px;">
-          <!-- CCRL Block -->
-          <div style="flex:1;">
-            <div style="font-size:11.5px;font-weight:700;margin-bottom:6px;">CCRL:</div>
-            <div style="font-size:11px;line-height:16px;">ChoZen Center for Regenerative Living, Inc<br>a Florida not-for-profit corporation</div>
+        <!-- CCRL header -->
+        <div style="margin-top:24px;">
+          <div style="font-size:13.5px;font-weight:700;margin-bottom:4px;">CCRL</div>
+          <div style="font-size:11px;font-weight:700;line-height:13px;">ChoZen Center for Regenerative Living, Inc<br>a Florida not-for-profit corporation</div>
+        </div>
+
+        <!-- Signatory blocks — CSS grid forces shared row heights so lines are always level -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto;column-gap:32px;margin-top:20px;padding:0 4px;">
+
+          <!-- Row 1: Names -->
+          <div style="text-align:center;padding-bottom:6px;">
+            <input id="ccrl-signatory-name" type="text" value="DAVE SCHULTZ" class="print-input" style="border:none;text-align:center;font-size:11px;font-weight:600;color:#111;outline:none;background:transparent;width:160px;text-transform:uppercase;" oninput="this.value=this.value.toUpperCase();this.setAttribute('value',this.value)" title="Click to edit name">
           </div>
-          
-          <!-- Client Block -->
-          <div style="flex:1;">
-            <div style="font-size:11.5px;font-weight:700;margin-bottom:6px;text-align:center;">${clientName}:</div>
-            <div style="display:flex;gap:16px;align-items:flex-start;">
-              <div style="flex:2;">
-                <input type="file" id="client-sig-upload" accept="image/*" style="display:none;" onchange="
-                  const file = this.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                      document.getElementById('client-sig-img').src = e.target.result;
-                      document.getElementById('client-sig-img').style.display = 'inline-block';
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                ">
-                <div class="sig-box" onclick="document.getElementById('client-sig-upload').click()">
-                  <img id="client-sig-img" style="max-height:22px;max-width:100%;display:none;position:absolute;bottom:0;left:50%;transform:translateX(-50%);">
+          <div style="text-align:center;padding-bottom:6px;">
+            <span style="font-size:11px;font-weight:600;color:#111;text-transform:uppercase;">${clientName}</span>
+          </div>
+
+          <!-- Row 2: Sig lines + Date -->
+          <div style="display:flex;gap:10px;">
+            <div style="flex:2;text-align:center;">
+              <div id="ccrl-sig-area" onclick="openSigModal('ccrl')" title="Click to sign" style="min-height:48px;cursor:pointer;position:relative;display:flex;align-items:flex-end;justify-content:center;overflow:visible;padding-bottom:3px;">
+                <img id="ccrl-sig-img" style="max-height:54px;max-width:100%;display:none;position:absolute;bottom:3px;left:50%;transform:translateX(-50%);">
+                <span id="ccrl-sig-hint" style="font-size:9px;color:#ccc;letter-spacing:0.5px;">CLICK TO SIGN</span>
+              </div>
+              <div style="height:1.5px;background:#111;"></div>
+            </div>
+            <div style="flex:1;text-align:center;">
+              <div style="min-height:48px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px;">
+                <div style="display:flex;align-items:center;gap:2px;" id="ccrl-date-comb" contenteditable="false">
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                  <span style="font-size:11px;color:#aaa;padding:0 1px;">-</span>
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                  <span style="font-size:11px;color:#aaa;padding:0 1px;">-</span>
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
                 </div>
-                <div style="font-size:10px;color:#666;text-align:center;line-height:16px;">Signature</div>
               </div>
-              <div style="flex:1;">
-                <input type="text" placeholder="" class="print-input" style="width:100%;height:16px;border:none;border-bottom:1px solid #111;text-align:center;font-size:10px;color:#111;outline:none;background:transparent;margin-bottom:0;padding-bottom:0;" oninput="this.setAttribute('value', this.value)">
-                <div style="font-size:10px;color:#666;text-align:center;line-height:16px;">Date</div>
-              </div>
+              <div style="height:1.5px;background:#111;"></div>
             </div>
           </div>
+          <div style="display:flex;gap:10px;">
+            <div style="flex:2;text-align:center;">
+              <div id="client-sig-area" onclick="openSigModal('client')" title="Click to sign" style="min-height:48px;cursor:pointer;position:relative;display:flex;align-items:flex-end;justify-content:center;overflow:visible;padding-bottom:3px;">
+                <img id="client-sig-img" style="max-height:54px;max-width:100%;display:none;position:absolute;bottom:3px;left:50%;transform:translateX(-50%);">
+                <span id="client-sig-hint" style="font-size:9px;color:#ccc;letter-spacing:0.5px;">CLICK TO SIGN</span>
+              </div>
+              <div style="height:1.5px;background:#111;"></div>
+            </div>
+            <div style="flex:1;text-align:center;">
+              <div style="min-height:48px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px;">
+                <div style="display:flex;align-items:center;gap:2px;" id="client-date-comb" contenteditable="false">
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                  <span style="font-size:11px;color:#aaa;padding:0 1px;">-</span>
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                  <span style="font-size:11px;color:#aaa;padding:0 1px;">-</span>
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                  <input class="sdb" maxlength="1" oninput="this.setAttribute('value',this.value);sdNav(this,'n')" onkeydown="sdNav(this,'p',event)" style="width:14px;height:20px;border:1px solid #bbb;border-radius:2px;text-align:center;font-size:12px;font-family:'Poppins',sans-serif;color:#111;background:transparent;outline:none;padding:0;">
+                </div>
+              </div>
+              <div style="height:1.5px;background:#111;"></div>
+            </div>
+          </div>
+
+          <!-- Row 3: Labels -->
+          <div style="display:flex;gap:10px;margin-top:2px;">
+            <div style="flex:2;text-align:center;font-size:9.5px;color:#666;">Signature</div>
+            <div style="flex:1;text-align:center;font-size:9.5px;color:#666;">Date</div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:2px;">
+            <div style="flex:2;text-align:center;font-size:9.5px;color:#666;">Signature</div>
+            <div style="flex:1;text-align:center;font-size:9.5px;color:#666;">Date</div>
+          </div>
+
         </div>
       </div>
 
@@ -5511,7 +5803,9 @@ function getMissingDescriptions() {
       const rName = getRowName(tr);
       const dayType = tr.querySelector('.day-type-sel')?.value || '';
       const sub = tr.querySelector('.money-input')?.value || '0.00';
-      if (!rName || rName === '—' || parseFloat(String(sub).replace(/,/g, '')) === 0) return;
+      const isOption = tr.querySelector('.option-only-chk')?.checked || false;
+      if (!rName || rName === '—') return;
+      if (!isOption && parseFloat(String(sub).replace(/,/g, '')) === 0) return;
       const displayName = dayType ? `${rName} (${dayType.toUpperCase()})` : rName;
       const desc = ITEM_DESCRIPTIONS[displayName] || ITEM_DESCRIPTIONS[rName] || '';
       if (!desc) missing.push(displayName);
@@ -5654,7 +5948,8 @@ function gatherData() {
     const dayType = dayTypeSel ? dayTypeSel.value : 'weekday';
     const priceVal = (tr.querySelector('.price-input')?.value || '').replace(/,/g,'');
     const nums = tr.querySelectorAll('input[type="number"]');
-    return { name, day_type:dayType, is_custom:isCustom, price:priceVal, discount:nums[0]?.value, nights:nums[1]?.value, qty:nums[2]?.value, subtotal:tr.querySelector('input[readonly]')?.dataset.raw || tr.querySelector('input[readonly]')?.value };
+    const isOption = tr.querySelector('.option-only-chk')?.checked || false;
+    return { name, day_type:dayType, is_custom:isCustom, is_option:isOption, price:priceVal, discount:nums[0]?.value, nights:nums[1]?.value, qty:nums[2]?.value, subtotal:tr.querySelector('input[readonly]')?.dataset.raw || tr.querySelector('input[readonly]')?.value };
   });
   const gBRows = (tbodyId, type) => [...document.querySelectorAll(`#${tbodyId} tr`)].map(tr => {
     const allInputs = [...tr.querySelectorAll('input')];
@@ -5750,7 +6045,7 @@ async function addUser() {
 }
 async function deleteUser(id) {
   if (!confirm('Remove this user?')) return;
-  await sb(`users?id=eq.${id}`, { method:'DELETE', headers:{'Prefer':'return=minimal'} });
+  await sb(`users?id=eq.${id}`, { method:'DELETE' });
   loadUserList();
 }
 function closeModal(id) { document.getElementById(id).style.display='none'; }
@@ -5969,6 +6264,473 @@ function initScrollReveal() {
   items.forEach(el => { el.classList.remove('visible'); observer.observe(el); });
 }
 
+// ── SENT TOAST ──
+function showSentToast(title, subtitle) {
+  let t = document.getElementById('sent-toast');
+  if (!t) return;
+  document.getElementById('sent-toast-title').textContent = title;
+  document.getElementById('sent-toast-sub').textContent = subtitle;
+  t.style.display = 'flex';
+  t.style.animation = 'none';
+  void t.offsetWidth;
+  t.style.animation = 'toastIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards';
+  clearTimeout(t._hideTimer);
+  t._hideTimer = setTimeout(() => {
+    t.style.animation = 'toastOut 0.25s ease forwards';
+    setTimeout(() => { t.style.display = 'none'; }, 260);
+  }, 4000);
+}
+
+// ── SIGNING MODE ──
+let _currentSigningRequest = null;
+
+// Check URL for signing param immediately
+(async function checkSigningMode() {
+  const signId = new URLSearchParams(window.location.search).get('sign');
+  if (!signId) return;
+  // Wait for DOM
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => initSigningMode(signId));
+  } else {
+    initSigningMode(signId);
+  }
+})();
+
+async function initSigningMode(signId) {
+  // Show signing page, hide login + app
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('signing-page').style.display = 'block';
+  document.getElementById('app').style.display = 'none';
+
+  const container = document.getElementById('sign-doc-container');
+  const instrBar  = document.getElementById('sign-instruction-bar');
+  const bottomBar = document.getElementById('sign-bottom-bar');
+  const alreadySigned = document.getElementById('sign-already-signed');
+
+  container.innerHTML = '<div style="text-align:center;padding:60px;color:#999;font-size:13px;">Loading document…</div>';
+
+  try {
+    const result = await sb(`signing_requests?id=eq.${signId}&select=*`);
+    if (!result?.length) {
+      container.innerHTML = '<div style="text-align:center;padding:60px;color:#c0392b;font-size:13px;">Document not found. This link may be invalid or expired.</div>';
+      instrBar.style.display = 'none';
+      bottomBar.style.display = 'none';
+      return;
+    }
+
+    _currentSigningRequest = result[0];
+
+    // Build the HTML to render — inject client signature directly into the string
+    // so it's guaranteed visible regardless of display:none on the original img
+    let docHtml = _currentSigningRequest.doc_html || '';
+    if (_currentSigningRequest.status === 'signed' && _currentSigningRequest.client_signature) {
+      const sigSrc = _currentSigningRequest.client_signature;
+      docHtml = docHtml.replace(
+        /(<img\s[^>]*id="client-sig-img"[^>]*>)/,
+        `<img id="client-sig-img" style="max-height:54px;max-width:100%;display:inline-block;position:absolute;bottom:3px;left:50%;transform:translateX(-50%);" src="${sigSrc}">`
+      );
+    }
+    container.innerHTML = docHtml;
+
+    // Inject saved client date into comb inputs
+    if (_currentSigningRequest.status === 'signed' && _currentSigningRequest.client_date) {
+      const chars = _currentSigningRequest.client_date.split('');
+      const dateInputs = container.querySelectorAll('#client-date-comb input');
+      dateInputs.forEach((inp, i) => { if (chars[i]) { inp.value = chars[i]; inp.setAttribute('value', chars[i]); } });
+    }
+
+    if (_currentSigningRequest.status === 'signed') {
+      // Show signed document read-only with PDF export
+      instrBar.style.background = '#1db954';
+      instrBar.textContent = '✓ This document has been signed.';
+      document.getElementById('sign-status-badge').textContent = '✓ SIGNED';
+      document.getElementById('sign-status-badge').style.background = 'rgba(29,185,84,0.25)';
+
+      // Replace bottom bar with PDF export only
+      bottomBar.innerHTML = `
+        <span style="font-size:12.5px;color:rgba(255,255,255,0.7);">${_currentSigningRequest.doc_title || 'Signed Document'}</span>
+        <button onclick="printSignedDoc()" style="background:#0d9488;color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;">
+          Export PDF
+        </button>`;
+
+      // Lock all sig areas — read-only
+      ['ccrl-sig-area','client-sig-area'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.style.pointerEvents = 'none'; el.style.cursor = 'default'; el.classList.remove('sig-guide-pulse'); }
+      });
+      ['ccrl-sig-hint','client-sig-hint'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      return;
+    }
+
+    // Disable CCRL sig area (read-only for client)
+    const ccrlArea = document.getElementById('ccrl-sig-area');
+    if (ccrlArea) { ccrlArea.style.pointerEvents = 'none'; ccrlArea.style.cursor = 'default'; }
+    const ccrlHint = document.getElementById('ccrl-sig-hint');
+    if (ccrlHint) ccrlHint.style.display = 'none';
+
+    // Highlight client sig area
+    const clientArea = document.getElementById('client-sig-area');
+    if (clientArea) {
+      clientArea.classList.add('sig-guide-pulse');
+      clientArea.title = 'Click here to sign';
+    }
+
+    // Update header
+    document.getElementById('sign-status-badge').textContent = `AWAITING YOUR SIGNATURE`;
+
+  } catch(e) {
+    container.innerHTML = '<div style="text-align:center;padding:60px;color:#c0392b;font-size:13px;">Error loading document. Please try again.</div>';
+    instrBar.style.display = 'none';
+    bottomBar.style.display = 'none';
+  }
+}
+
+async function submitSignature() {
+  const signId = new URLSearchParams(window.location.search).get('sign');
+  if (!signId || !_currentSigningRequest) return;
+
+  const clientSigImg = document.getElementById('client-sig-img');
+  if (!clientSigImg || clientSigImg.style.display === 'none') {
+    alert('Please add your signature before submitting.');
+    return;
+  }
+
+  const btn = document.getElementById('sign-submit-btn');
+  if (btn) { btn.textContent = 'Submitting…'; btn.disabled = true; }
+
+  const clientDateInputs = document.querySelectorAll('#client-date-comb input');
+  const clientDate = Array.from(clientDateInputs).map(i => i.value).join('') || '';
+  const signatureData = clientSigImg.src;
+
+  try {
+    const saved = await sb(`signing_requests?id=eq.${signId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: 'signed',
+        client_signature: signatureData,
+        client_date: clientDate,
+        signed_at: new Date().toISOString()
+      })
+    });
+    if (!saved) throw new Error('Signature could not be saved. Please try again.');
+
+    // Update UI to success
+    document.getElementById('sign-guide-text').innerHTML = '✓ &nbsp;Signature submitted successfully! Thank you.';
+    document.getElementById('sign-guide-dot').style.background = '#1db954';
+    document.getElementById('sign-guide-dot').style.boxShadow = '0 0 0 2px #1db954';
+    document.getElementById('sign-guide-dot').style.animation = 'none';
+    document.getElementById('sign-status-badge').textContent = '✓ SIGNED';
+    document.getElementById('sign-status-badge').style.background = 'rgba(29,185,84,0.25)';
+    document.getElementById('sign-instruction-bar').style.background = '#1db954';
+    document.getElementById('sign-instruction-bar').textContent = '✓ Document signed successfully. Thank you!';
+    if (btn) { btn.textContent = '✓ Submitted'; btn.style.background = 'rgba(29,185,84,0.25)'; btn.style.color = '#1db954'; btn.style.border = '1.5px solid #1db954'; }
+
+    // Notify sender via EmailJS
+    const senderEmail = _currentSigningRequest.sender_email;
+    const recipientName = _currentSigningRequest.recipient_name;
+    const docTitle = _currentSigningRequest.doc_title;
+    if (senderEmail) {
+      try {
+        const signedUrl = `${window.location.origin}${window.location.pathname}?sign=${signId}`;
+        await emailjs.send('service_yg26boj', 'template_70kl59h', {
+          to_email:    senderEmail,
+          to_name:     'ChoZen Team',
+          subject:     `[Signed] ${recipientName} signed: ${docTitle}`,
+          from_email:  'noreply@retreatdesk.app',
+          from_name:   'RetreatDesk',
+          message:     `${recipientName} just signed the ${docTitle}. This document is now ready for your review.`,
+          signing_url: signedUrl,
+        });
+      } catch(e) { console.warn('Notification email failed:', e); }
+    }
+  } catch(e) {
+    alert('Error submitting signature. Please try again.');
+    if (btn) { btn.textContent = 'Submit Signature'; btn.disabled = false; }
+  }
+}
+
+function printSignedDoc() {
+  var content = document.getElementById('sign-doc-container')?.innerHTML || '';
+  var title = (_currentSigningRequest && _currentSigningRequest.doc_title) ? _currentSigningRequest.doc_title : 'Signed Document';
+  var win = window.open('', '_blank');
+  var css = '<style>*{box-sizing:border-box;}body{font-family:\'Inter\',sans-serif;margin:0;padding:24px 32px;background:#fff;line-height:1.45;}input{border:none;outline:none;background:transparent;font-family:\'Poppins\',sans-serif;}@media print{body{margin:0;padding:0;}}<\/style>';
+  var fonts = '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">';
+  win.document.write('<!DOCTYPE html><html><head><title>' + title + '<\/title>' + fonts + css + '<\/head><bo' + 'dy>' + content + '<\/bo' + 'dy><\/html>');
+  win.document.close();
+  win.onload = function() { win.focus(); win.print(); };
+}
+
+// ── SEND VIA EMAIL ──
+let _sendDocType = null;
+
+function sendViaEmail(docType) {
+  const email   = document.getElementById('r-email')?.value?.trim();
+  const contact = document.getElementById('r-contact')?.value?.trim();
+  const name    = document.getElementById('r-name')?.value || currentRetreat?.name || '';
+
+  if (!email || !contact) {
+    alert('Please fill in Contact Person and Email in the Calculator tab before sending.');
+    return;
+  }
+
+  _sendDocType = docType;
+  const warnings = [];
+
+  if (docType === 'quote') {
+    const missing = quoteManuallyEdited ? getMissingFromPreview('quote-preview') : getMissingDescriptions();
+    if (missing.length) missing.forEach(m => warnings.push('Missing description: ' + m));
+    if (!document.getElementById('r-expiry')?.value) warnings.push('Quote expiration date is not set.');
+  }
+
+  if (docType === 'ra') {
+    const missing = raManuallyEdited ? getMissingFromPreview('ra-preview') : getMissingDescriptions();
+    if (missing.length) missing.forEach(m => warnings.push('Missing description: ' + m));
+    const ccrlSig = document.getElementById('ccrl-sig-img');
+    if (!ccrlSig || ccrlSig.style.display === 'none') warnings.push('CCRL signature (Dave Schultz) is not yet added.');
+    const ccrlDateFilled = Array.from(document.querySelectorAll('#ccrl-date-comb input')).every(i => i.value.trim() !== '');
+    if (!ccrlDateFilled) warnings.push('CCRL date is not fully filled in.');
+    const property = document.getElementById('r-property')?.value?.trim();
+    if (!property) warnings.push('Property name is not set.');
+  }
+
+  if (docType === 'invoice') {
+    const booking = document.getElementById('r-booking')?.value || document.getElementById('p-booking')?.value;
+    if (!booking) warnings.push('Booking date is not set.');
+  }
+
+  // Populate modal
+  const titles = { quote: 'Send Quote', ra: 'Send Rental Agreement', invoice: 'Send Invoice' };
+  const subjects = {
+    quote:   `Quote — ${name} Retreat`,
+    ra:      `Rental Agreement — ${name} Retreat`,
+    invoice: `Invoice — ${name} Retreat`,
+  };
+
+  document.getElementById('send-modal-title').textContent = titles[docType];
+  document.getElementById('send-recipient-name').textContent = contact;
+  document.getElementById('send-recipient-email').textContent = email;
+  document.getElementById('send-avatar').textContent = contact.charAt(0).toUpperCase();
+  document.getElementById('send-subject-preview').textContent = subjects[docType];
+  document.getElementById('send-confirm-chk').checked = false;
+  const savedFrom = localStorage.getItem('rdFromEmail') || '';
+  document.getElementById('send-from-email').value = savedFrom;
+
+  const warnBox  = document.getElementById('send-warnings');
+  const warnList = document.getElementById('send-warnings-list');
+  if (warnings.length) {
+    warnList.innerHTML = warnings.map(w => `<li>${w}</li>`).join('');
+    warnBox.style.display = 'block';
+  } else {
+    warnBox.style.display = 'none';
+    warnList.innerHTML = '';
+  }
+
+  document.getElementById('send-email-modal').style.display = 'flex';
+}
+
+function closeSendModal(e) {
+  if (e && e.target !== document.getElementById('send-email-modal')) return;
+  document.getElementById('send-email-modal').style.display = 'none';
+  _sendDocType = null;
+}
+
+async function confirmSendEmail() {
+  if (!document.getElementById('send-confirm-chk').checked) {
+    alert('Please check the confirmation box before sending.');
+    return;
+  }
+  const fromEmail = document.getElementById('send-from-email')?.value?.trim();
+  if (!fromEmail) {
+    alert('Please enter your email address in the "From" field.');
+    document.getElementById('send-from-email').focus();
+    return;
+  }
+
+  const email   = document.getElementById('r-email')?.value?.trim();
+  const contact = document.getElementById('r-contact')?.value?.trim();
+  const name    = document.getElementById('r-name')?.value || currentRetreat?.name || '';
+  const labels  = { quote: 'Quote', ra: 'Rental Agreement', invoice: 'Invoice' };
+  const previewIds = { quote: 'quote-preview', ra: 'ra-preview', invoice: 'invoice-preview' };
+  const docTitle = `${labels[_sendDocType]} — ${name} Retreat`;
+
+  // Capture document HTML
+  const docEl = document.getElementById(previewIds[_sendDocType]);
+  const docHtml = docEl ? docEl.innerHTML : '';
+
+  const sendBtn = document.getElementById('send-confirm-btn');
+  if (sendBtn) { sendBtn.textContent = 'Sending…'; sendBtn.disabled = true; }
+
+  // Save to Supabase, get signing URL
+  let signingUrl = null;
+  try {
+    const result = await sb('signing_requests', {
+      method: 'POST',
+      body: JSON.stringify({
+        retreat_id: currentRetreat?.id || null,
+        doc_type: _sendDocType,
+        doc_html: docHtml,
+        doc_title: docTitle,
+        recipient_name: contact,
+        recipient_email: email,
+        sender_email: fromEmail,
+        status: 'pending'
+      })
+    });
+    const signId = result?.[0]?.id;
+    if (signId) signingUrl = `${window.location.origin}${window.location.pathname}?sign=${signId}`;
+  } catch(e) {
+    console.warn('Could not save signing request:', e);
+  }
+
+  // Send via EmailJS
+  try {
+    await emailjs.send('service_yg26boj', 'template_70kl59h', {
+      to_email:    email,
+      to_name:     contact,
+      subject:     docTitle,
+      from_email:  fromEmail,
+      from_name:   'ChoZen Center for Regenerative Living',
+      message:     'You have a document ready for your review and signature.',
+      signing_url: signingUrl || '',
+    });
+    document.getElementById('send-email-modal').style.display = 'none';
+    showSentToast(`Document sent to ${contact}`, email);
+  } catch(e) {
+    console.error('EmailJS error:', e, JSON.stringify(e));
+    alert('EmailJS Error: ' + (e?.text || e?.message || JSON.stringify(e)));
+  } finally {
+    if (sendBtn) { sendBtn.textContent = 'Send'; sendBtn.disabled = false; }
+    _sendDocType = null;
+  }
+}
+
+// ── SIGNATURE MODAL ──
+let _sigTarget = null; // 'ccrl' or 'client'
+let _sigDrawing = false;
+let _sigUploadDataURL = null;
+
+function openSigModal(side) {
+  _sigTarget = side;
+  _sigUploadDataURL = null;
+  document.getElementById('sig-modal').style.display = 'flex';
+  document.getElementById('sig-upload-preview').style.display = 'none';
+  document.getElementById('sig-upload-input').value = '';
+  switchSigTab('draw');
+  setTimeout(() => { clearSigCanvas(); initSigCanvas(); }, 50);
+}
+function closeSigModal(e) {
+  if (e && e.target !== document.getElementById('sig-modal')) return;
+  document.getElementById('sig-modal').style.display = 'none';
+  _sigTarget = null;
+}
+function switchSigTab(tab) {
+  const isDraw = tab === 'draw';
+  document.getElementById('sig-panel-draw').style.display = isDraw ? '' : 'none';
+  document.getElementById('sig-panel-upload').style.display = isDraw ? 'none' : '';
+  const btnDraw = document.getElementById('sig-tab-draw');
+  const btnUpload = document.getElementById('sig-tab-upload');
+  btnDraw.style.color = isDraw ? 'var(--accent)' : 'var(--mute2)';
+  btnDraw.style.borderBottom = isDraw ? '2px solid var(--accent)' : '2px solid transparent';
+  btnUpload.style.color = !isDraw ? 'var(--accent)' : 'var(--mute2)';
+  btnUpload.style.borderBottom = !isDraw ? '2px solid var(--accent)' : '2px solid transparent';
+}
+function initSigCanvas() {
+  const canvas = document.getElementById('sig-draw-canvas');
+  if (!canvas || canvas._sigInited) return;
+  canvas._sigInited = true;
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const getPos = (e) => {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: (src.clientX - r.left) * (canvas.width / r.width), y: (src.clientY - r.top) * (canvas.height / r.height) };
+  };
+  canvas.addEventListener('mousedown', e => { _sigDrawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+  canvas.addEventListener('mousemove', e => { if (!_sigDrawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+  canvas.addEventListener('mouseup', () => { _sigDrawing = false; });
+  canvas.addEventListener('mouseleave', () => { _sigDrawing = false; });
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); _sigDrawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }, {passive:false});
+  canvas.addEventListener('touchmove', e => { e.preventDefault(); if (!_sigDrawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }, {passive:false});
+  canvas.addEventListener('touchend', () => { _sigDrawing = false; });
+}
+function clearSigCanvas() {
+  const canvas = document.getElementById('sig-draw-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+function onSigFileUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    _sigUploadDataURL = ev.target.result;
+    document.getElementById('sig-upload-img').src = _sigUploadDataURL;
+    document.getElementById('sig-upload-preview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+function applySig() {
+  if (!_sigTarget) return;
+  const tab = document.getElementById('sig-panel-draw').style.display !== 'none' ? 'draw' : 'upload';
+  let dataURL = null;
+  if (tab === 'draw') {
+    const canvas = document.getElementById('sig-draw-canvas');
+    // Check if canvas is empty
+    const ctx = canvas.getContext('2d');
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const hasContent = data.some(v => v !== 0);
+    if (!hasContent) { alert('Please draw your signature first.'); return; }
+    dataURL = canvas.toDataURL('image/png');
+  } else {
+    if (!_sigUploadDataURL) { alert('Please select an image to upload.'); return; }
+    dataURL = _sigUploadDataURL;
+  }
+  const img = document.getElementById(_sigTarget + '-sig-img');
+  const hint = document.getElementById(_sigTarget + '-sig-hint');
+  if (img) { img.src = dataURL; img.style.display = 'inline-block'; }
+  if (hint) hint.style.display = 'none';
+  document.getElementById('sig-modal').style.display = 'none';
+
+  // If in signing mode and client just signed — enable submit button
+  if (_sigTarget === 'client' && document.getElementById('signing-page')?.style.display !== 'none') {
+    const clientArea = document.getElementById('client-sig-area');
+    if (clientArea) clientArea.classList.remove('sig-guide-pulse');
+    const submitBtn = document.getElementById('sign-submit-btn');
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.style.background = '#0d9488';
+      submitBtn.style.color = '#fff';
+      submitBtn.style.border = '1.5px solid #0d9488';
+      submitBtn.style.cursor = 'pointer';
+    }
+    document.getElementById('sign-guide-text').textContent = '✓ Signature added. Click "Submit Signature" to complete.';
+    document.getElementById('sign-guide-dot').style.background = '#0d9488';
+  }
+
+  _sigTarget = null;
+}
+
+function sdNav(el, dir, evt) {
+  if (dir === 'n') {
+    if (!el.value) return;
+    let n = el.nextElementSibling;
+    while (n && n.tagName !== 'INPUT') n = n.nextElementSibling;
+    if (n) n.focus();
+  } else {
+    if (!evt || evt.key !== 'Backspace') return;
+    if (el.value) return;
+    evt.preventDefault();
+    let p = el.previousElementSibling;
+    while (p && p.tagName !== 'INPUT') p = p.previousElementSibling;
+    if (p) { p.focus(); p.value = ''; p.setAttribute('value', ''); }
+  }
+}
 
 </script>
 </body>
