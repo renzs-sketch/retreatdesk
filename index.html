@@ -3519,13 +3519,17 @@ function buildGuestBreakdown(d) {
 function _appendRGuestRow(tbody, label, count, rate, removable) {
   const tr = document.createElement('tr');
   tr.className = 'r-guest-row';
-  const safeLabel = String(label).replace(/"/g, '&quot;');
+  // For children, resolve rate from age group if not explicitly provided
+  const matchedGroup = _ageGroups.find(function(g){ return g.value === label; });
+  const resolvedRate = removable ? (matchedGroup ? matchedGroup.rate : rate) : rate;
   tr.innerHTML =
     (removable
-      ? '<td><input class="fi rg-label" type="text" value="'+safeLabel+'" placeholder="Age range" oninput="calcRGuestTotals();markDirty();"></td>'
+      ? '<td><select class="fi rg-label" onchange="syncRGuestRate(this)" style="cursor:pointer;">'+_ageGroupOpts(label)+'</select></td>'
       : '<td style="font-size:13px;color:var(--body);font-weight:500;">Adults</td>') +
     '<td class="center"><input class="fi rg-count" type="number" value="'+(count||'')+'" placeholder="0" min="0" oninput="calcRGuestTotals();markDirty();" style="text-align:center;width:80px;margin:0 auto;display:block;"></td>' +
-    '<td class="center"><div style="display:flex;align-items:center;justify-content:center;gap:4px;"><input class="fi rg-rate" type="number" value="'+rate+'" min="0" max="999" oninput="calcRGuestTotals();markDirty();" style="text-align:center;width:70px;"><span style="font-size:11px;color:var(--mute2);">%</span></div></td>' +
+    (removable
+      ? '<td class="center"><div style="display:flex;align-items:center;justify-content:center;gap:4px;"><input class="fi rg-rate" type="number" value="'+resolvedRate+'" readonly style="text-align:center;width:70px;opacity:0.5;pointer-events:none;"><span style="font-size:11px;color:var(--mute2);">%</span></div></td>'
+      : '<td class="center"><div style="display:flex;align-items:center;justify-content:center;gap:4px;"><input class="fi rg-rate" type="number" value="'+rate+'" min="0" max="999" oninput="calcRGuestTotals();markDirty();" style="text-align:center;width:70px;"><span style="font-size:11px;color:var(--mute2);">%</span></div></td>') +
     (removable
       ? '<td><button onclick="removeRGuestRow(this)" class="row-del" title="Remove">×</button></td>'
       : '<td></td>');
@@ -3534,10 +3538,7 @@ function _appendRGuestRow(tbody, label, count, rate, removable) {
 function addRGuestChildRow() {
   const tbody = document.getElementById('r-guest-tbody');
   if (!tbody) return;
-  const existing = tbody.querySelectorAll('.r-guest-row').length - 1;
-  const defs = [{range:'6–11',rate:75},{range:'3–5',rate:50},{range:'1–2',rate:25}];
-  const d = defs[existing] || {range:'',rate:50};
-  _appendRGuestRow(tbody, d.range, 0, d.rate, true);
+  _appendRGuestRow(tbody, '4–9', 0, 75, true);
   calcRGuestTotals();
   markDirty();
 }
@@ -3565,20 +3566,35 @@ function calcRGuestTotals() {
   onRevenueChange();
 }
 
+// ── AGE GROUP HELPERS (shared) ──
+const _ageGroups = [{value:'0–3',rate:0},{value:'4–9',rate:75},{value:'10 ≤',rate:100}];
+function _ageGroupOpts(selected) {
+  return _ageGroups.map(function(g) {
+    return '<option value="'+g.value+'" data-rate="'+g.rate+'"'+(g.value===selected?' selected':'')+'>'+g.value+'</option>';
+  }).join('');
+}
+function syncNrChildRate(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  const rateEl = sel.closest('.nr-child-row').querySelector('.nr-child-rate');
+  if (rateEl && opt) { rateEl.value = opt.dataset.rate; calcNrGuestTotals(); }
+}
+function syncRGuestRate(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  const rateEl = sel.closest('.r-guest-row').querySelector('.rg-rate');
+  if (rateEl && opt) { rateEl.value = opt.dataset.rate; calcRGuestTotals(); markDirty(); }
+}
+
 // ── GUEST BREAKDOWN (NEW RETREAT MODAL) ──
 let nrChildIdx = 0;
-const _nrChildDefs = [{range:'6–11',rate:75},{range:'3–5',rate:50},{range:'1–2',rate:25}];
 function addNrChildRow() {
-  const existing = document.querySelectorAll('#nr-child-rows .nr-child-row').length;
-  const d = _nrChildDefs[existing] || {range:'',rate:50};
   const row = document.createElement('div');
   row.className = 'nr-child-row';
   row.style.cssText = 'display:grid;grid-template-columns:1fr 72px 68px 24px;gap:8px;align-items:center;margin-bottom:6px;';
   row.innerHTML =
-    '<input class="fi nr-child-range" type="text" value="'+d.range+'" placeholder="Age range" oninput="calcNrGuestTotals()" style="font-size:12px;color:rgba(255,255,255,0.7);">' +
+    '<select class="fi nr-child-range" onchange="syncNrChildRate(this)" style="font-size:12px;color:rgba(255,255,255,0.7);cursor:pointer;">'+_ageGroupOpts('4–9')+'</select>' +
     '<input class="fi nr-child-count" type="number" placeholder="0" min="0" oninput="calcNrGuestTotals()" style="text-align:center;">' +
     '<div style="display:flex;align-items:center;gap:3px;">' +
-      '<input class="fi nr-child-rate" type="number" value="'+d.rate+'" min="0" max="999" oninput="calcNrGuestTotals()" style="text-align:center;">' +
+      '<input class="fi nr-child-rate" type="number" value="75" readonly style="text-align:center;opacity:0.5;pointer-events:none;">' +
       '<span style="font-size:11px;color:rgba(255,255,255,0.28);">%</span>' +
     '</div>' +
     '<button onclick="removeNrChildRow(this)" style="background:none;border:none;color:rgba(255,255,255,0.22);font-size:15px;cursor:pointer;padding:0;line-height:1;width:24px;height:24px;border-radius:4px;font-family:inherit;" onmouseover="this.style.color=\'rgba(220,80,80,0.8)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.22)\'">×</button>';
